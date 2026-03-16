@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi tools</title>
+    <style>
+        /* 基本版面設定 */
+        body {
+            display: flex;
+            margin: 0;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+        }
+
+        /* 左側選單樣式 */
+        .sidebar {
+            width: 260px;
+            background-color: #f8f9fa; /* 淺灰色背景 */
+            border-right: 1px solid #e0e0e0;
+            padding: 20px 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        /* 主標題 */
+        .sidebar h1 {
+            font-size: 22px;
+            color: #1a1a1a;
+            margin-top: 0;
+            margin-bottom: 25px;
+            padding-left: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 分類標題 */
+        .category-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            padding-left: 10px;
+        }
+
+        /* 連結按鈕 */
+        .sidebar a {
+            display: block;
+            padding: 8px 10px;
+            color: #333333;
+            text-decoration: none;
+            font-size: 14px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar a:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
+            font-weight: 500;
+        }
+
+        /* 右側顯示區塊 (iframe) 樣式 */
+        .content-frame {
+            flex-grow: 1;
+            border: none;
+            height: 100%;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h1>🛠️ Pi tools</h1>
+        
+        <div class="category-title">Tutor & Course Mgt.</div>
+        <a href="pi timetable.html" target="viewer">Pi Timetable</a>
+        <a href="tutor dashboard.html" target="viewer">Tutor Dashboard</a>
+        <a href="tutor reminder.html" target="viewer">Tutor Reminder</a>
+
+        <div class="category-title">Accounting</div>
+        <a href="Red 4.0.html" target="viewer">Red 4.0</a>
+        <a href="red simpified.html" target="viewer">Red Simplified</a>
+
+        <div class="category-title">Leadership</div>
+        <a href="mission board.html" target="viewer">Mission Board</a>
+        <a href="mission dashboard.html" target="viewer">Mission Dashboard</a>
+        <a href="one on one meeting form.html" target="viewer">1-on-1 Meeting Form</a>
+    </div>
+
+    <iframe src="pi timetable.html" name="viewer" class="content-frame"></iframe>
+
+</body>
+</html>

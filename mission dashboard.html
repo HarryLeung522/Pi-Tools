@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Mission Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; border-radius: 12px; height: 100%; }
+        .card-header { background-color: #fff; border-bottom: 1px solid #eee; font-weight: bold; font-size: 1.1rem; border-radius: 12px 12px 0 0 !important; }
+        /* 僅保留 Project 列表的滾動條，避免專案過多時版面過長 */
+        .project-list-scroll { max-height: 400px; overflow-y: auto; }
+        .list-group-item { display: flex; justify-content: space-between; align-items: center; }
+        .badge-count { background-color: #0d6efd; color: white; border-radius: 50%; padding: 5px 10px; font-size: 0.85rem; }
+        .badge-total { background-color: #212529; color: white; border-radius: 8px; padding: 5px 10px; font-size: 0.9rem; }
+        .stat-box { background-color: #e9ecef; border-radius: 8px; padding: 10px; margin-bottom: 10px; text-align: center; }
+        .stat-number { font-size: 1.5rem; font-weight: bold; color: #212529; }
+        .stat-label { font-size: 0.85rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid py-4">
+    <h1 class="text-center mb-5 fw-bold text-primary">Pi Mission Dashboard</h1>
+
+    <div class="mb-5">
+        <h2 class="mb-4 border-start border-4 border-primary ps-3">總體分析</h2>
+        <div class="row g-4">
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header" id="overallPieHeader">Aspect 比例分析</div>
+                    <div class="card-body d-flex justify-content-center align-items-center" style="position: relative; height: 350px;">
+                        <canvas id="overallPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header">Project 排行榜</div>
+                    <div class="card-body p-0 project-list-scroll">
+                        <ul class="list-group list-group-flush" id="overallProjectList">
+                            <li class="list-group-item text-center text-muted py-4">載入中...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header">任務性質與進度</div>
+                    <div class="card-body">
+                        <h6 class="fw-bold text-secondary mb-3">工作優先級矩陣</h6>
+                        <div class="row g-2 mb-4" id="overallMatrixStats">
+                            <div class="text-center text-muted">載入中...</div>
+                        </div>
+                        <h6 class="fw-bold text-secondary mb-3">完成時效分析</h6>
+                        <div class="row g-2" id="overallTimingStats">
+                            <div class="text-center text-muted">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <div>
+        <h2 class="mb-3 border-start border-4 border-success ps-3">個人分析</h2>
+        <div class="row mb-4">
+            <div class="col-12 col-md-4">
+                <label for="personSelect" class="form-label fw-bold">請選擇負責人 (E行)</label>
+                <select id="personSelect" class="form-select border-success">
+                    <option value="">載入中...</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header text-success" id="personPieHeader">Aspect 比例分析</div>
+                    <div class="card-body d-flex justify-content-center align-items-center" style="position: relative; height: 350px;">
+                        <canvas id="personPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header text-success">Project 排行榜</div>
+                    <div class="card-body p-0 project-list-scroll">
+                        <ul class="list-group list-group-flush" id="personProjectList">
+                            <li class="list-group-item text-center text-muted py-4">請選擇負責人</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header text-success">任務性質與進度</div>
+                    <div class="card-body">
+                        <h6 class="fw-bold text-secondary mb-3">工作優先級矩陣</h6>
+                        <div class="row g-2 mb-4" id="personMatrixStats">
+                            <div class="text-center text-muted">請選擇負責人</div>
+                        </div>
+                        <h6 class="fw-bold text-secondary mb-3">完成時效分析</h6>
+                        <div class="row g-2" id="personTimingStats">
+                            <div class="text-center text-muted">請選擇負責人</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSLnU0BMgl4AFXJuTVBtdmcCvuhDbv7TJxLHGK0BQZ9pJTOxdcLQ2QU1inCjXeZKJdc9v3-y4Kfk4aS/pub?output=csv";
+
+    let globalData = [];
+    let personChartInstance = null;
+    let overallChartInstance = null;
+
+    const COL = { ASPECT: 0, PROJECT: 1, TASK: 2, INITIATOR: 3, OWNER: 4, IMPORTANT: 5, URGENT: 6, PROGRESS: 7, CREATED: 8, DEADLINE: 9, COMPLETED: 10 };
+
+    // 解析中文日期的函數
+    function parseChineseDate(dateStr) {
+        if (!dateStr) return null;
+        dateStr = dateStr.trim();
+        
+        // 匹配 YYYY年MM月DD日
+        const regex = /(\d{4})年(\d{1,2})月(\d{1,2})日/;
+        const match = dateStr.match(regex);
+        
+        if (match) {
+            // 月份在 JavaScript 的 Date 物件中是從 0 開始的 (0-11)
+            return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+        }
+        
+        // 若為一般格式的防呆處理
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    Papa.parse(csvUrl, {
+        download: true,
+        header: false,
+        complete: function(results) {
+            // 過濾資料，確保行數足夠且有 Aspect 值
+            globalData = results.data.slice(1).filter(row => row.length > 5 && row[COL.ASPECT] && row[COL.ASPECT].trim() !== ""); 
+            initDashboard();
+        },
+        error: function(err) {
+            alert("讀取資料失敗，請確認網址是否正確。");
+            console.error(err);
+        }
+    });
+
+    function initDashboard() {
+        renderDashboard(globalData, 'overall');
+
+        const owners = [...new Set(globalData.map(row => row[COL.OWNER]).filter(o => o && o.trim() !== ''))].sort();
+        const select = document.getElementById('personSelect');
+        select.innerHTML = '<option value="">-- 請選擇負責人 --</option>';
+        owners.forEach(owner => {
+            select.innerHTML += `<option value="${owner}">${owner}</option>`;
+        });
+
+        select.addEventListener('change', function(e) {
+            const selectedPerson = e.target.value;
+            if (selectedPerson) {
+                const filteredData = globalData.filter(row => row[COL.OWNER] === selectedPerson);
+                renderDashboard(filteredData, 'person');
+            } else {
+                clearPersonDashboard();
+            }
+        });
+    }
+
+    function renderDashboard(data, type) {
+        const totalTasks = data.length;
+
+        // 更新圓形圖標題 (加入 Task 總數)
+        document.getElementById(`${type}PieHeader`).innerText = `Aspect 比例分析 (Task 總數: ${totalTasks})`;
+
+        // 1. Aspect
+        const aspectCounts = {};
+        data.forEach(row => {
+            const aspect = row[COL.ASPECT] || '未分類';
+            aspectCounts[aspect] = (aspectCounts[aspect] || 0) + 1;
+        });
+
+        // 2. Project
+        const projectCounts = {};
+        data.forEach(row => {
+            let project = (row[COL.PROJECT] || '').trim();
+            if (project === '' || project.toLowerCase() === 'no') {
+                project = 'Unclassified Project';
+            }
+            projectCounts[project] = (projectCounts[project] || 0) + 1;
+        });
+        
+        // 排序：Unclassified Project 強制排最底
+        const sortedProjects = Object.entries(projectCounts).sort((a, b) => {
+            if (a[0] === 'Unclassified Project') return 1;
+            if (b[0] === 'Unclassified Project') return -1;
+            return b[1] - a[1];
+        });
+
+        // 3. 矩陣與時效
+        let matrix = { iu: 0, inu: 0, uiu: 0, uinu: 0 }; 
+        let timing = { onTime: 0, early: 0, late: 0 };
+
+        data.forEach(row => {
+            // 矩陣
+            const isImp = (row[COL.IMPORTANT] || '').trim().toLowerCase() === 'yes';
+            const isUrg = (row[COL.URGENT] || '').trim().toLowerCase() === 'yes';
+            if (isImp && isUrg) matrix.iu++;
+            else if (isImp && !isUrg) matrix.inu++;
+            else if (!isImp && isUrg) matrix.uiu++;
+            else matrix.uinu++;
+
+            // 時效 (使用新的中文日期解析函數)
+            const deadlineStr = row[COL.DEADLINE];
+            const completedStr = row[COL.COMPLETED];
+            
+            if (deadlineStr && completedStr) {
+                const deadline = parseChineseDate(deadlineStr);
+                const completed = parseChineseDate(completedStr);
+                
+                if (deadline && completed) {
+                    deadline.setHours(0,0,0,0);
+                    completed.setHours(0,0,0,0);
+                    if (completed.getTime() === deadline.getTime()) timing.onTime++;
+                    else if (completed.getTime() < deadline.getTime()) timing.early++;
+                    else timing.late++;
+                }
+            }
+        });
+
+        drawPieChart(`${type}PieChart`, aspectCounts, type);
+        updateProjectList(`${type}ProjectList`, sortedProjects, totalTasks);
+        updateMatrixStats(`${type}MatrixStats`, matrix);
+        updateTimingStats(`${type}TimingStats`, timing);
+    }
+
+    function drawPieChart(canvasId, dataCounts, type) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        const labels = Object.keys(dataCounts);
+        const dataValues = Object.values(dataCounts);
+        const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997'];
+
+        if (type === 'person' && personChartInstance) personChartInstance.destroy();
+        if (type === 'overall' && overallChartInstance) overallChartInstance.destroy();
+
+        if (labels.length === 0) return;
+
+        const newChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw;
+                                let total = context.chart._metasets[context.datasetIndex].total;
+                                let percentage = Math.round((value / total) * 100) + "%";
+                                return `${label}: ${value} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (type === 'person') personChartInstance = newChart;
+        if (type === 'overall') overallChartInstance = newChart;
+    }
+
+    function updateProjectList(listId, sortedProjects, totalTasks) {
+        const listEl = document.getElementById(listId);
+        listEl.innerHTML = '';
+        if (sortedProjects.length === 0) {
+            listEl.innerHTML = '<li class="list-group-item text-center text-muted">目前尚無資料</li>';
+            return;
+        }
+        
+        sortedProjects.forEach(([project, count]) => {
+            listEl.innerHTML += `
+                <li class="list-group-item">
+                    <span>${project}</span>
+                    <span class="badge-count">${count}</span>
+                </li>
+            `;
+        });
+        
+        // 在最底端加入 Task 總數
+        listEl.innerHTML += `
+            <li class="list-group-item bg-light border-top border-2 mt-2">
+                <span class="fw-bold">Task 總數</span>
+                <span class="badge-total">${totalTasks}</span>
+            </li>
+        `;
+    }
+
+    function updateMatrixStats(containerId, matrix) {
+        document.getElementById(containerId).innerHTML = `
+            <div class="col-6"><div class="stat-box"><div class="stat-number text-danger">${matrix.iu}</div><div class="stat-label">重要 / 緊急</div></div></div>
+            <div class="col-6"><div class="stat-box"><div class="stat-number text-primary">${matrix.inu}</div><div class="stat-label">重要 / 不緊急</div></div></div>
+            <div class="col-6"><div class="stat-box"><div class="stat-number text-warning">${matrix.uiu}</div><div class="stat-label">不重要 / 緊急</div></div></div>
+            <div class="col-6"><div class="stat-box"><div class="stat-number text-secondary">${matrix.uinu}</div><div class="stat-label">不重要 / 不緊急</div></div></div>
+        `;
+    }
+
+    function updateTimingStats(containerId, timing) {
+        document.getElementById(containerId).innerHTML = `
+            <div class="col-4"><div class="stat-box"><div class="stat-number text-success">${timing.early}</div><div class="stat-label">提早完成</div></div></div>
+            <div class="col-4"><div class="stat-box"><div class="stat-number text-primary">${timing.onTime}</div><div class="stat-label">如期完成</div></div></div>
+            <div class="col-4"><div class="stat-box"><div class="stat-number text-danger">${timing.late}</div><div class="stat-label">遲延完成</div></div></div>
+        `;
+    }
+
+    function clearPersonDashboard() {
+        if (personChartInstance) personChartInstance.destroy();
+        document.getElementById('personPieHeader').innerText = 'Aspect 比例分析';
+        document.getElementById('personProjectList').innerHTML = '<li class="list-group-item text-center text-muted py-4">請選擇負責人</li>';
+        document.getElementById('personMatrixStats').innerHTML = '<div class="text-center text-muted">請選擇負責人</div>';
+        document.getElementById('personTimingStats').innerHTML = '<div class="text-center text-muted">請選擇負責人</div>';
+    }
+</script>
+</body>
+</html>

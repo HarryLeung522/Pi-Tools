@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>派克教班日期</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c3e50; 
+            --bg-light: #f4f7f6;      
+            --card-border: #d6eaf8;   
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .controls-box {
+            background: #ebf5fb;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 25px;
+        }
+
+        a { text-decoration: none !important; }
+        .fc-col-header-cell-cushion, .fc-daygrid-day-number, .fc-list-day-text, .fc-list-day-side-text {
+            text-decoration: none !important;
+            color: var(--primary-color) !important;
+        }
+
+        .fc .fc-button-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .fc-event {
+            cursor: pointer;
+            border: none;
+            background-color: #ffffff !important;
+            color: #333 !important;
+            padding: 2px 5px;
+            margin-bottom: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .tutor-border-default { border-left: 5px solid #3498db !important; } 
+        .tutor-border-harry { border-left: 5px solid #f39c12 !important; }   
+        .tutor-border-zoe { border-left: 5px solid #27ae60 !important; }     
+        .tutor-border-ian { border-left: 5px solid #e74c3c !important; }     
+        .tutor-border-chris { border-left: 5px solid #8e44ad !important; }   
+
+        .event-time { font-weight: 700; color: #444; }
+        .event-tutor { font-size: 0.85em; color: #666; font-style: italic; }
+
+        .fc-daygrid-day-events {
+            padding-bottom: 10px !important;
+        }
+
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        
+        .detail-item {
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .summary-box {
+            background-color: #e8f8f5;
+            border: 1px solid #a3e4d7;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                padding: 15px;
+            }
+            .controls-box {
+                padding: 15px;
+            }
+            .fc-header-toolbar {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center !important;
+            }
+            .fc-toolbar-chunk {
+                text-align: center;
+            }
+            .fc .fc-toolbar-title {
+                font-size: 1.25rem !important;
+            }
+            .event-time { font-size: 0.8em; }
+            .event-tutor { font-size: 0.75em; }
+            .fc-event .small { font-size: 0.75em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-3 fw-bold">正在讀取派克教班資料...</p>
+    </div>
+
+    <div class="main-container">
+        <h2 class="text-center mb-4 fw-bold"><i class="bi bi-calendar3"></i> 派克教班日期</h2>
+        
+        <div class="controls-box text-center">
+            <div class="row g-3 text-start mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">選取導師1</label>
+                    <select id="filterTutor1" class="form-select">
+                        <option value="all">顯示所有導師</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">選取課程</label>
+                    <select id="filterCourse" class="form-select">
+                        <option value="all">顯示所有課程</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">顯示模式</label>
+                    <select id="viewSelect" class="form-select">
+                        <option value="dayGridMonth">月曆視圖 (顯示所有)</option>
+                        <option value="dayGridWeek">一週日曆 (格子)</option>
+                        <option value="listWeek">週列表 (清單)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row g-3 text-start">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">選取導師2</label>
+                    <select id="filterTutor2" class="form-select">
+                        <option value="none">無</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">選取導師3</label>
+                    <select id="filterTutor3" class="form-select">
+                        <option value="none">無</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">選取導師4</label>
+                    <select id="filterTutor4" class="form-select">
+                        <option value="none">無</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="calendar"></div>
+
+        <div class="controls-box mt-5">
+            <h3 class="text-center mb-4 fw-bold"><i class="bi bi-search"></i> 按學校/課程顯示</h3>
+            <div class="row g-3 text-start">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">學校名稱 (A行)</label>
+                    <select id="schoolSelect" class="form-select">
+                        <option value="">請先選擇學校...</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">課程名稱 (I行)</label>
+                    <select id="schoolCourseSelect" class="form-select" disabled>
+                        <option value="">請選擇課程...</option>
+                    </select>
+                </div>
+            </div>
+            <div id="courseDetailsList" class="mt-4 list-group"></div>
+        </div>
+
+        <div class="controls-box mt-5">
+            <h3 class="text-center mb-4 fw-bold"><i class="bi bi-box-seam"></i> 教材安排提示</h3>
+            <div class="row g-3 text-start mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">日期 (以週計算)</label>
+                    <select id="matWeekSelect" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">學校 (A行)</label>
+                    <select id="matSchoolSelect" class="form-select">
+                        <option value="all">所有學校</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">導師 (G行)</label>
+                    <select id="matTutorSelect" class="form-select">
+                        <option value="all">所有導師</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="materialSummaryBox" class="summary-box mb-4" style="display: none;">
+                <h5 class="fw-bold text-success mb-3"><i class="bi bi-clipboard-check"></i> 本週教材總結</h5>
+                <div id="sendSummaryText" class="mb-2 text-dark"></div>
+                <div id="collectSummaryText" class="text-dark"></div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-arrow-right-circle"></i> 送出教材</h5>
+                    <div id="sendMaterialList" class="list-group"></div>
+                </div>
+                <div class="col-md-6 mt-4 mt-md-0">
+                    <h5 class="fw-bold text-danger mb-3"><i class="bi bi-arrow-left-circle"></i> 回收教材</h5>
+                    <div id="collectMaterialList" class="list-group"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQFFF43IJhu4qgR8KiR_Oo9lwv7LkuTcjHzebpTvUd-SnnivG_5GwDT3-JzEncLTxKXbZuQ8LnU90n3/pub?output=csv';
+        let allEvents = [];
+        let rawSheetData = []; 
+        let calendar;
+
+        const TUTOR_COLORS = {
+            'Harry': 'tutor-border-harry',
+            'Zoe': 'tutor-border-zoe',
+            'Ian': 'tutor-border-ian',
+            'Chris': 'tutor-border-chris'
+        };
+
+        const PRIORITY_TUTORS = ['Harry', 'Zoe', 'Chris', 'Ian'];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initCalendar();
+            fetchData();
+            
+            ['filterTutor1', 'filterTutor2', 'filterTutor3', 'filterTutor4'].forEach(id => {
+                document.getElementById(id).addEventListener('change', refreshCalendar);
+            });
+            document.getElementById('filterCourse').addEventListener('change', refreshCalendar);
+            document.getElementById('viewSelect').addEventListener('change', (e) => calendar.changeView(e.target.value));
+            
+            setupSchoolCourseListeners();
+        });
+
+        function initCalendar() {
+            const isMobile = window.innerWidth < 768;
+            const defaultView = isMobile ? 'listWeek' : 'dayGridMonth';
+            document.getElementById('viewSelect').value = defaultView;
+
+            calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: defaultView,
+                locale: 'zh-tw',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                eventOrder: "sortOrder,start",
+                dayMaxEvents: false,
+                dayMaxEventRows: false,
+                eventContent: function(arg) {
+                    let p = arg.event.extendedProps;
+                    let colorClass = TUTOR_COLORS[p.tutor] || 'tutor-border-default';
+                    
+                    return {
+                        html: `<div class="${colorClass}" style="padding-left: 5px;">
+                                <div class="event-time">${p.timeStr} <span class="event-tutor">| ${p.tutor}</span></div>
+                                <div class="small text-truncate" style="color:#000">${p.school}</div>
+                               </div>`
+                    };
+                }
+            });
+            calendar.render();
+        }
+
+        function fetchData() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                complete: function(results) {
+                    const rows = results.data;
+                    let tutorSet = new Set();
+                    let courseSet = new Set();
+                    let schoolSetForDisplay = new Set(); 
+                    
+                    rawSheetData = []; 
+
+                    for (let i = 1; i < rows.length; i++) {
+                        let col = rows[i];
+                        if (!col[0] || !col[3]) continue;
+                        
+                        let date = parseDate(col[3]);
+                        
+                        rawSheetData.push({
+                            A: (col[0] || '').trim(),
+                            C: (col[2] || '').trim(),
+                            D: (col[3] || '').trim(),
+                            E: (col[4] || '').trim(),
+                            F: (col[5] || '').trim(),
+                            G: (col[6] || '').trim(),
+                            I: (col[8] || '').trim(),
+                            M: (col.length > 12 ? col[12] : '').trim(),
+                            N: (col.length > 13 ? col[13] : '').trim(),
+                            parsedDate: date
+                        });
+                        
+                        schoolSetForDisplay.add((col[0] || '').trim());
+
+                        if (date) {
+                            let tutorsInRow = col[6] ? col[6].split('/') : ['未指定'];
+                            tutorsInRow.forEach(tName => {
+                                let cleanName = tName.trim();
+                                if(cleanName === "") return;
+                                
+                                let sOrder = PRIORITY_TUTORS.indexOf(cleanName);
+                                if(sOrder === -1) sOrder = 99;
+
+                                allEvents.push({
+                                    title: cleanName + " | " + col[0],
+                                    start: date,
+                                    school: col[0],
+                                    course: col[1],
+                                    timeStr: col[5],
+                                    tutor: cleanName,
+                                    sortOrder: sOrder
+                                });
+                                tutorSet.add(cleanName);
+                            });
+                            if(col[1]) courseSet.add(col[1].trim());
+                        }
+                    }
+                    populateTutorSelect(tutorSet);
+                    populateSelect('filterCourse', courseSet);
+                    populateSchoolSelect(schoolSetForDisplay);
+                    
+                    refreshCalendar();
+                    document.getElementById('loading').style.display = 'none';
+
+                    initMaterialSection(tutorSet, schoolSetForDisplay);
+                }
+            });
+        }
+
+        function parseDate(s) {
+            const m = s.match(/(\d+)年(\d+)月(\d+)日/);
+            return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : null;
+        }
+
+        function populateTutorSelect(tutorSet) {
+            const selects = [
+                document.getElementById('filterTutor1'),
+                document.getElementById('filterTutor2'),
+                document.getElementById('filterTutor3'),
+                document.getElementById('filterTutor4')
+            ];
+
+            const tutors = Array.from(tutorSet);
+            tutors.sort((a, b) => {
+                let indexA = PRIORITY_TUTORS.indexOf(a);
+                let indexB = PRIORITY_TUTORS.indexOf(b);
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                return a.localeCompare(b);
+            });
+
+            tutors.forEach(t => {
+                selects.forEach(s => {
+                    let o = document.createElement('option');
+                    o.value = t;
+                    o.text = t;
+                    s.appendChild(o);
+                });
+            });
+        }
+
+        function populateSelect(id, data) {
+            const s = document.getElementById(id);
+            Array.from(data).sort().forEach(t => {
+                let o = document.createElement('option');
+                o.value = o.text = t;
+                s.appendChild(o);
+            });
+        }
+
+        function refreshCalendar() {
+            const t1 = document.getElementById('filterTutor1').value;
+            const t2 = document.getElementById('filterTutor2').value;
+            const t3 = document.getElementById('filterTutor3').value;
+            const t4 = document.getElementById('filterTutor4').value;
+            const c = document.getElementById('filterCourse').value;
+
+            const selectedTutors = [t1, t2, t3, t4].filter(val => val !== 'none');
+            const showAllTutors = selectedTutors.includes('all');
+
+            calendar.removeAllEvents();
+            
+            let filtered = allEvents.filter(e => {
+                const matchTutor = showAllTutors || selectedTutors.includes(e.tutor);
+                const matchCourse = (c === 'all' || e.course === c);
+                return matchTutor && matchCourse;
+            });
+            
+            calendar.addEventSource(filtered);
+        }
+
+        function populateSchoolSelect(schoolSet) {
+            const schoolSelect = document.getElementById('schoolSelect');
+            Array.from(schoolSet).sort().forEach(school => {
+                if(school) {
+                    let opt = document.createElement('option');
+                    opt.value = opt.text = school;
+                    schoolSelect.appendChild(opt);
+                }
+            });
+        }
+
+        function setupSchoolCourseListeners() {
+            const schoolSelect = document.getElementById('schoolSelect');
+            const courseSelect = document.getElementById('schoolCourseSelect');
+            const detailList = document.getElementById('courseDetailsList');
+
+            schoolSelect.addEventListener('change', function() {
+                const selectedSchool = this.value;
+                
+                courseSelect.innerHTML = '<option value="">請選擇課程...</option>';
+                detailList.innerHTML = '';
+                
+                if (!selectedSchool) {
+                    courseSelect.disabled = true;
+                    return;
+                }
+                
+                courseSelect.disabled = false;
+                let courseSetForSchool = new Set();
+                
+                rawSheetData.filter(r => r.A === selectedSchool).forEach(r => {
+                    if (r.I) courseSetForSchool.add(r.I);
+                });
+                
+                Array.from(courseSetForSchool).sort().forEach(c => {
+                    let opt = document.createElement('option');
+                    opt.value = opt.text = c;
+                    courseSelect.appendChild(opt);
+                });
+            });
+
+            courseSelect.addEventListener('change', function() {
+                const selectedSchool = schoolSelect.value;
+                const selectedCourse = this.value;
+                
+                detailList.innerHTML = ''; 
+                
+                if (!selectedCourse) return;
+                
+                const filteredData = rawSheetData.filter(r => r.A === selectedSchool && r.I === selectedCourse);
+                
+                if(filteredData.length === 0) {
+                    detailList.innerHTML = '<div class="list-group-item text-muted">無相關資料</div>';
+                    return;
+                }
+
+                filteredData.forEach(r => {
+                    let item = document.createElement('div');
+                    item.className = 'list-group-item detail-item';
+                    
+                    item.innerHTML = `<strong>${r.A}</strong> - ${r.I} - ${r.C} - ${r.G} - ${r.D} - ${r.E} - ${r.F}`;
+                    detailList.appendChild(item);
+                });
+            });
+        }
+
+        // ======== 教材安排提示功能區塊 ========
+
+        function initMaterialSection(tutorSet, schoolSet) {
+            const schoolSelect = document.getElementById('matSchoolSelect');
+            Array.from(schoolSet).sort().forEach(school => {
+                if(school) {
+                    let opt = document.createElement('option');
+                    opt.value = opt.text = school;
+                    schoolSelect.appendChild(opt);
+                }
+            });
+
+            const tutorSelect = document.getElementById('matTutorSelect');
+            const tutors = Array.from(tutorSet).sort((a, b) => {
+                let indexA = PRIORITY_TUTORS.indexOf(a);
+                let indexB = PRIORITY_TUTORS.indexOf(b);
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                return a.localeCompare(b);
+            });
+            tutors.forEach(t => {
+                let opt = document.createElement('option');
+                opt.value = opt.text = t;
+                tutorSelect.appendChild(opt);
+            });
+
+            generateWeeks();
+
+            document.getElementById('matWeekSelect').addEventListener('change', updateMaterialPrompt);
+            document.getElementById('matSchoolSelect').addEventListener('change', updateMaterialPrompt);
+            document.getElementById('matTutorSelect').addEventListener('change', updateMaterialPrompt);
+
+            updateMaterialPrompt();
+        }
+
+        function generateWeeks() {
+            const select = document.getElementById('matWeekSelect');
+            let dates = rawSheetData.map(r => r.parsedDate).filter(d => d);
+            if (dates.length === 0) return;
+
+            dates.sort();
+            let minDateStr = dates[0];
+            let maxDateStr = dates[dates.length - 1];
+
+            let minDate = new Date(minDateStr);
+            let maxDate = new Date(maxDateStr);
+
+            let startSunday = new Date(minDate);
+            startSunday.setDate(startSunday.getDate() - startSunday.getDay());
+
+            let endSaturday = new Date(maxDate);
+            endSaturday.setDate(endSaturday.getDate() + (6 - endSaturday.getDay()));
+
+            let currentSunday = new Date(startSunday);
+            let todayStr = formatDate(new Date());
+            let selectedValue = "";
+
+            while (currentSunday <= endSaturday) {
+                let currentSaturday = new Date(currentSunday);
+                currentSaturday.setDate(currentSaturday.getDate() + 6);
+
+                let startStr = formatDate(currentSunday);
+                let endStr = formatDate(currentSaturday);
+                let val = `${startStr}|${endStr}`;
+                
+                let opt = document.createElement('option');
+                opt.value = val;
+                opt.text = `${startStr} ~ ${endStr}`;
+
+                if (todayStr >= startStr && todayStr <= endStr) {
+                    selectedValue = val;
+                }
+
+                select.appendChild(opt);
+                currentSunday.setDate(currentSunday.getDate() + 7);
+            }
+
+            if (selectedValue) {
+                select.value = selectedValue;
+            } else if (select.options.length > 0) {
+                select.selectedIndex = select.options.length - 1;
+            }
+        }
+
+        function formatDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function updateMaterialPrompt() {
+            const weekVal = document.getElementById('matWeekSelect').value;
+            const schoolVal = document.getElementById('matSchoolSelect').value;
+            const tutorVal = document.getElementById('matTutorSelect').value;
+
+            const sendList = document.getElementById('sendMaterialList');
+            const collectList = document.getElementById('collectMaterialList');
+            
+            const summaryBox = document.getElementById('materialSummaryBox');
+            const sendSumDiv = document.getElementById('sendSummaryText');
+            const collectSumDiv = document.getElementById('collectSummaryText');
+
+            sendList.innerHTML = '';
+            collectList.innerHTML = '';
+
+            if (!weekVal) return;
+
+            const [weekStartStr, weekEndStr] = weekVal.split('|');
+            
+            let groups = {};
+            rawSheetData.forEach(r => {
+                if (!r.A || !r.M || !r.parsedDate) return; 
+                
+                let key = r.A + "|||" + r.M;
+                if (!groups[key]) {
+                    groups[key] = [];
+                }
+                groups[key].push(r);
+            });
+
+            let sends = [];
+            let collects = [];
+
+            for (let key in groups) {
+                let rows = groups[key];
+                rows.sort((a, b) => a.parsedDate.localeCompare(b.parsedDate));
+
+                let firstRow = rows[0];
+                let lastRow = rows[rows.length - 1];
+
+                if (firstRow.parsedDate >= weekStartStr && firstRow.parsedDate <= weekEndStr) {
+                    let matchSchool = (schoolVal === 'all' || firstRow.A === schoolVal);
+                    let tutors = firstRow.G ? firstRow.G.split('/').map(t => t.trim()) : [];
+                    let matchTutor = (tutorVal === 'all' || tutors.includes(tutorVal));
+                    
+                    if (matchSchool && matchTutor) {
+                        sends.push(firstRow);
+                    }
+                }
+
+                if (lastRow.parsedDate >= weekStartStr && lastRow.parsedDate <= weekEndStr) {
+                    let matchSchool = (schoolVal === 'all' || lastRow.A === schoolVal);
+                    let tutors = lastRow.G ? lastRow.G.split('/').map(t => t.trim()) : [];
+                    let matchTutor = (tutorVal === 'all' || tutors.includes(tutorVal));
+                    
+                    if (matchSchool && matchTutor) {
+                        collects.push(lastRow);
+                    }
+                }
+            }
+
+            // --- 總結計算邏輯 ---
+            let sendSummary = {};
+            sends.forEach(r => {
+                let m = r.M;
+                // 用 parseFloat 抓取數字，若填寫 "15包" 會抓到 15。若沒填或無法轉換則為 0
+                let num = parseFloat(r.N) || 0;
+                sendSummary[m] = (sendSummary[m] || 0) + num;
+            });
+
+            let collectSummary = {};
+            collects.forEach(r => {
+                let m = r.M;
+                let num = parseFloat(r.N) || 0;
+                collectSummary[m] = (collectSummary[m] || 0) + num;
+            });
+
+            // --- 渲染總結區塊 ---
+            let sendKeys = Object.keys(sendSummary);
+            let collectKeys = Object.keys(collectSummary);
+
+            if (sendKeys.length === 0 && collectKeys.length === 0) {
+                summaryBox.style.display = 'none';
+            } else {
+                summaryBox.style.display = 'block';
+                
+                if (sendKeys.length > 0) {
+                    let sText = sendKeys.map(m => `${m}（${sendSummary[m]}個）`).join('、');
+                    sendSumDiv.innerHTML = `<strong>需準備送出：</strong> ${sText}`;
+                } else {
+                    sendSumDiv.innerHTML = `<strong>需準備送出：</strong> 無`;
+                }
+
+                if (collectKeys.length > 0) {
+                    let cText = collectKeys.map(m => `${m}（${collectSummary[m]}個）`).join('、');
+                    collectSumDiv.innerHTML = `<strong>預期可回收：</strong> ${cText}`;
+                } else {
+                    collectSumDiv.innerHTML = `<strong>預期可回收：</strong> 無`;
+                }
+            }
+
+            // --- 渲染列表 ---
+            if (sends.length === 0) {
+                sendList.innerHTML = '<div class="list-group-item text-muted">本週無送出教材</div>';
+            } else {
+                sends.forEach(r => {
+                    let div = document.createElement('div');
+                    div.className = 'list-group-item detail-item';
+                    div.innerHTML = `<strong>${r.A}</strong>-${r.D}-${r.E}-${r.G}-${r.M}-數量：${r.N}`;
+                    sendList.appendChild(div);
+                });
+            }
+
+            if (collects.length === 0) {
+                collectList.innerHTML = '<div class="list-group-item text-muted">本週無回收教材</div>';
+            } else {
+                collects.forEach(r => {
+                    let div = document.createElement('div');
+                    div.className = 'list-group-item detail-item';
+                    div.innerHTML = `<strong>${r.A}</strong>-${r.D}-${r.E}-${r.G}-${r.M}-數量：${r.N}`;
+                    collectList.appendChild(div);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

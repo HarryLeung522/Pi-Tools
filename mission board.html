@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>派克公會任務區</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --task-bg: #f8f9fa;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --imp-color: #27ae60; 
+            --urg-color: #e67e22;
+            --border-color: #e1e8ed;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        #today-date {
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 1.1em;
+            margin-bottom: 20px; 
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px; 
+        }
+        .events-card {
+            width: 100%;
+            box-sizing: border-box;
+            border-left: 6px solid #9b59b6;
+        }
+        .event-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .event-item:last-child { border-bottom: none; }
+        .event-title { font-size: 1.05em; font-weight: bold; }
+        .event-days { color: #2c3e50; font-weight: bold; text-align: right;}
+        
+        .pics-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; 
+        }
+        .pic-card {
+            flex: 1 1 calc(25% - 15px);
+            min-width: 260px;
+            box-sizing: border-box;
+            border-top: 5px solid #34495e;
+        }
+        .pic-card h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .task-item {
+            background-color: var(--task-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        .task-item.hidden {
+            display: none;
+        }
+        .task-item:last-child { 
+            margin-bottom: 0; 
+        }
+        .task-finished {
+            text-decoration: line-through;
+            opacity: 0.5;
+            background-color: #f0f0f0;
+        }
+        .task-header {
+            font-weight: bold;
+            margin-bottom: 6px; 
+            font-size: 1.1em; 
+            line-height: 1.3;
+        }
+        .task-details {
+            font-size: 0.85em; 
+            color: var(--text-sub);
+            line-height: 1.5; 
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            color: white;
+            margin-left: 5px; 
+            vertical-align: middle;
+        }
+        .tag-imp { background-color: var(--imp-color); }
+        .tag-urg { background-color: var(--urg-color); }
+        
+        .toggle-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #edf2f7;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            color: #4a5568;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .toggle-btn:hover {
+            background-color: #e2e8f0;
+        }
+
+        /* 專案下拉選單樣式 */
+        .project-select {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.05em;
+            font-weight: bold;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 10px;
+            font-family: inherit;
+            color: #2c3e50;
+            background-color: var(--task-bg);
+            cursor: pointer;
+            outline: none;
+        }
+        .project-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        #holiday-toggle {
+            transition: opacity 0.2s;
+        }
+        #holiday-toggle:hover {
+            opacity: 0.7;
+        }
+
+        #loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: var(--text-sub);
+            margin-top: 50px;
+        }
+
+        @media(max-width: 768px) {
+            .pic-card { flex: 1 1 100%; }
+            .event-item { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .event-days { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>派克公會任務區</h1>
+    <div id="today-date"></div>
+
+    <div id="loading">讀取資料中，請稍候...</div>
+
+    <div id="content" style="display: none;">
+        <div class="card events-card">
+            <h2 style="margin-top: 0; color: #2c3e50;">近期主要活動</h2>
+            <div id="events-list"></div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+            <div id="holiday-toggle" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 5px 0; user-select: none;">
+                <h3 style="margin: 0; color: #2c3e50; font-size: 1.05em;">🏖️ 未來六個月公眾假期</h3>
+                <span id="holiday-toggle-icon" style="color: #888; font-size: 0.9em; font-weight: bold;">▼ 展開</span>
+            </div>
+            <div id="holidays-list" style="display: none; margin-top: 10px;"></div>
+        </div>
+
+        <div class="pics-container">
+            <div class="card pic-card" id="card-Harry">
+                <h2>Harry</h2>
+                <div class="task-list"></div>
+            </div>
+            <div class="card pic-card" id="card-Zoe">
+                <h2>Zoe</h2>
+                <div class="task-list"></div>
+            </div>
+            <div class="card pic-card" id="card-Ian">
+                <h2>Ian</h2>
+                <div class="task-list"></div>
+            </div>
+            <div class="card pic-card" id="card-Chris">
+                <h2>Chris</h2>
+                <div class="task-list"></div>
+            </div>
+        </div>
+
+        <div class="card" style="border-top: 5px solid #2980b9;">
+            <h2 style="margin-top: 0; color: #2c3e50;">專案區 (Projects)</h2>
+            <select id="project-select" class="project-select">
+                <option value="">請選擇專案來查看任務...</option>
+            </select>
+            <div id="project-task-list" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 假期摺疊切換邏輯
+        document.getElementById('holiday-toggle').addEventListener('click', () => {
+            const list = document.getElementById('holidays-list');
+            const icon = document.getElementById('holiday-toggle-icon');
+            if (list.style.display === 'none') {
+                list.style.display = 'block';
+                icon.innerHTML = '▲ 收起';
+            } else {
+                list.style.display = 'none';
+                icon.innerHTML = '▼ 展開';
+            }
+        });
+
+        // 設定 Google Sheet CSV 網址
+        const SHEET1_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSLnU0BMgl4AFXJuTVBtdmcCvuhDbv7TJxLHGK0BQZ9pJTOxdcLQ2QU1inCjXeZKJdc9v3-y4Kfk4aS/pub?gid=0&single=true&output=csv";
+        const SHEET2_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSLnU0BMgl4AFXJuTVBtdmcCvuhDbv7TJxLHGK0BQZ9pJTOxdcLQ2QU1inCjXeZKJdc9v3-y4Kfk4aS/pub?gid=1185871089&single=true&output=csv";
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const daysOfWeek = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+        document.getElementById('today-date').innerText = `今日日期：${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日 (${daysOfWeek[today.getDay()]})`;
+
+        // 2026 年香港公眾假期詳細資料
+        const hkHolidaysData = [
+            { date: "2026-01-01", name: "元旦" },
+            { date: "2026-02-17", name: "農曆年初一" },
+            { date: "2026-02-18", name: "農曆年初二" },
+            { date: "2026-02-19", name: "農曆年初三" },
+            { date: "2026-04-03", name: "耶穌受難節" },
+            { date: "2026-04-04", name: "清明節" }, 
+            { date: "2026-04-06", name: "復活節星期一" },
+            { date: "2026-04-07", name: "清明節翌日" }, 
+            { date: "2026-05-01", name: "勞動節" },
+            { date: "2026-05-25", name: "佛誕翌日" },
+            { date: "2026-06-19", name: "端午節" },
+            { date: "2026-07-01", name: "香港特別行政區成立紀念日" },
+            { date: "2026-09-26", name: "中秋節翌日" },
+            { date: "2026-10-01", name: "國慶日" },
+            { date: "2026-10-26", name: "重陽節翌日" },
+            { date: "2026-12-25", name: "聖誕節" },
+            { date: "2026-12-26", name: "聖誕節後第一個周日" }
+        ];
+        
+        // 為了支援舊有的扣除假期功能，抽取純日期陣列
+        const hkHolidays = hkHolidaysData.map(h => h.date);
+
+        function parseChineseDate(dateStr) {
+            if (!dateStr) return null;
+            const match = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+            if (match) return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+            return null;
+        }
+
+        function getDaysDiff(d1, d2) {
+            const diffTime = d2.getTime() - d1.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function getHKWorkingDays(startDate, endDate) {
+            if (startDate > endDate) return 0;
+            let count = 0;
+            let cur = new Date(startDate);
+            while (cur < endDate) {
+                cur.setDate(cur.getDate() + 1); 
+                const day = cur.getDay();
+                const dStr = cur.toISOString().split('T')[0];
+                if (day !== 0 && day !== 6 && !hkHolidays.includes(dStr)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function isThisWeek(targetDate) {
+            if (!targetDate) return false;
+            const d = new Date(targetDate);
+            d.setHours(0, 0, 0, 0);
+            
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay()); 
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6); 
+            
+            return d >= startOfWeek && d <= endOfWeek;
+        }
+
+        // 定義共用的排序邏輯：Important > Urgent > Deadline
+        function sortTasksLogic(a, b) {
+            if (a.isImportant !== b.isImportant) return a.isImportant ? -1 : 1;
+            if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
+            
+            const dateA = parseChineseDate(a.deadlineStr);
+            const dateB = parseChineseDate(b.deadlineStr);
+            if (dateA && dateB) return dateA.getTime() - dateB.getTime();
+            if (dateA) return -1;
+            if (dateB) return 1;
+            return 0;
+        }
+
+        // 生成 Deadline 的 HTML 文本邏輯
+        function generateDeadlineHtml(deadlineStr, isFinished) {
+            const deadlineDate = parseChineseDate(deadlineStr);
+            let deadlineText = deadlineStr ? `Deadline: ${deadlineStr}` : "Deadline: 未設定";
+            if (deadlineDate && !isFinished) {
+                const daysLeft = getDaysDiff(today, deadlineDate);
+                if (daysLeft < 0) {
+                    deadlineText += ` <strong style="color:red;">(已過期 ${Math.abs(daysLeft)} 天)</strong>`;
+                } else if (daysLeft === 0) {
+                    deadlineText += ` <strong style="color:red;">(今天到期！)</strong>`;
+                } else if (daysLeft <= 3) {
+                    deadlineText += ` <strong style="color:red;">(餘下 ${daysLeft} 天)</strong>`;
+                } else if (daysLeft <= 7) {
+                    deadlineText += ` <strong style="color:#e67e22;">(餘下 ${daysLeft} 天)</strong>`; 
+                } else {
+                    deadlineText += ` <strong style="color:#888888;">(餘下 ${daysLeft} 天)</strong>`; 
+                }
+            }
+            return deadlineText;
+        }
+
+        Promise.all([
+            new Promise(resolve => Papa.parse(SHEET1_URL, { download: true, header: false, skipEmptyLines: true, complete: resolve })),
+            new Promise(resolve => Papa.parse(SHEET2_URL, { download: true, header: false, skipEmptyLines: true, complete: resolve }))
+        ]).then(results => {
+            const sheet1Data = results[0].data.slice(1);
+            const sheet2Data = results[1].data.slice(1);
+
+            renderEvents(sheet2Data);
+            renderHolidays(); // 載入假期
+            renderTasksAndProjects(sheet1Data);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        });
+
+        function renderEvents(data) {
+            const container = document.getElementById('events-list');
+            let validEvents = [];
+            data.forEach(row => {
+                const eventName = row[0];
+                const dateStr = row[1];
+                const eventDate = parseChineseDate(dateStr);
+                if (eventName && eventDate) {
+                    validEvents.push({ eventName, dateStr, eventDate });
+                }
+            });
+
+            if (validEvents.length === 0) {
+                container.innerHTML = "<p>暫無活動</p>";
+                return;
+            }
+
+            validEvents.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+
+            validEvents.forEach(ev => {
+                const daysLeft = getDaysDiff(today, ev.eventDate);
+                const workingDaysLeft = getHKWorkingDays(today, ev.eventDate);
+
+                let timeText = "";
+                if (daysLeft < 0) {
+                    timeText = `已過去 ${Math.abs(daysLeft)} 天`;
+                } else if (daysLeft === 0) {
+                    timeText = `活動就在今天！`;
+                } else {
+                    timeText = `餘下 ${daysLeft} 天 ( ${workingDaysLeft} 個工作天 )`;
+                }
+
+                const div = document.createElement('div');
+                div.className = 'event-item';
+                div.innerHTML = `
+                    <div class="event-title">${ev.eventName} <span style="font-size:0.8em; color:#666; font-weight:normal; margin-left:8px;">${ev.dateStr}</span></div>
+                    <div class="event-days">${timeText}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 渲染公眾假期
+        function renderHolidays() {
+            const container = document.getElementById('holidays-list');
+            
+            // 計算六個月後的日期
+            const sixMonthsLater = new Date(today);
+            sixMonthsLater.setMonth(today.getMonth() + 6);
+
+            // 篩選未來六個月內，且不是星期日的假期
+            const upcomingHolidays = hkHolidaysData.filter(h => {
+                const hDate = new Date(h.date);
+                hDate.setHours(0, 0, 0, 0);
+                // 排除星期日 (0)
+                if (hDate.getDay() === 0) return false;
+                return hDate >= today && hDate <= sixMonthsLater;
+            });
+
+            if (upcomingHolidays.length === 0) {
+                container.innerHTML = "<p style='color: var(--text-sub); font-size: 0.9em;'>未來六個月暫無公眾假期</p>";
+                return;
+            }
+
+            upcomingHolidays.forEach(h => {
+                const hDate = new Date(h.date);
+                const daysLeft = getDaysDiff(today, hDate);
+                const dayOfWeek = daysOfWeek[hDate.getDay()];
+                const dateText = `${hDate.getFullYear()}年${hDate.getMonth() + 1}月${hDate.getDate()}日 (${dayOfWeek})`;
+
+                let timeText = daysLeft === 0 ? `<span style="color:red;">今天放假！</span>` : `餘下 ${daysLeft} 天`;
+
+                const div = document.createElement('div');
+                div.className = 'event-item';
+                div.style.padding = '8px 0'; // 假期區塊稍微緊湊一點
+                div.innerHTML = `
+                    <div class="event-title" style="font-size:0.95em; font-weight:normal;">
+                        ${h.name} <span style="font-size:0.85em; color:#888; margin-left:8px;">${dateText}</span>
+                    </div>
+                    <div class="event-days" style="font-size:0.9em; color:#888; font-weight:normal;">${timeText}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderTasksAndProjects(data) {
+            const pics = { "Harry": [], "Zoe": [], "Ian": [], "Chris": [] };
+            const projects = {}; 
+
+            // 1. 整理及篩選資料
+            data.forEach(row => {
+                const aspect = row[0];          // A行
+                const projectRaw = row[1] || ""; // B行: Project
+                const taskRaw = row[2];         // C行: Task
+                const picStr = row[4] || "";    // E行: PIC
+                const isImportant = row[5] === "YES"; // F行
+                const isUrgent = row[6] === "YES";    // G行
+                const progress = row[7];        // H行
+                const deadlineStr = row[9];     // J行
+                const finishedDateStr = row[10]; // K行
+                
+                if (!taskRaw) return;
+
+                const isFinished = (progress === "Finished");
+                const finishedDate = parseChineseDate(finishedDateStr);
+
+                if (isFinished && !isThisWeek(finishedDate)) return; 
+
+                // 清理 Project 名稱
+                const projectName = projectRaw.replace(/^\[|\]$/g, '').trim();
+                
+                // 判斷是否為「NO」項目 (不分大小楷)
+                const isNoProject = projectName.toUpperCase() === 'NO';
+
+                // PIC 顯示的任務名稱：若有專案名稱且不是「NO」，才加上前綴
+                const displayTaskName = (projectName && !isNoProject) ? `[${projectName}] ${taskRaw}` : taskRaw;
+
+                const taskObj = { aspect, task: displayTaskName, isImportant, isUrgent, progress, deadlineStr, isFinished, picStr };
+
+                // 處理專案區下拉選單資料
+                if (projectName) {
+                    if (!projects[projectName]) projects[projectName] = [];
+                    projects[projectName].push({
+                        ...taskObj,
+                        task: taskRaw // 專案區塊內只顯示純任務名稱
+                    });
+                }
+
+                // 拆分負責人
+                const picArray = picStr.split('/');
+                picArray.forEach(p => {
+                    const cleanName = p.trim();
+                    if (pics[cleanName]) {
+                        pics[cleanName].push(taskObj);
+                    }
+                });
+            });
+
+            // 2. 渲染負責人 (PIC) 任務
+            Object.keys(pics).forEach(name => {
+                const tasks = pics[name];
+                
+                tasks.sort(sortTasksLogic);
+
+                const container = document.querySelector(`#card-${name} .task-list`);
+                if (tasks.length === 0) {
+                    container.innerHTML = "<p style='color:#999; text-align:center;'>目前沒有任務</p>";
+                    return;
+                }
+
+                tasks.forEach((t, index) => {
+                    const deadlineText = generateDeadlineHtml(t.deadlineStr, t.isFinished);
+                    
+                    let tagsHtml = '';
+                    if (t.isImportant) tagsHtml += `<span class="tag tag-imp">Important</span>`;
+                    if (t.isUrgent) tagsHtml += `<span class="tag tag-urg">Urgent</span>`;
+
+                    const div = document.createElement('div');
+                    let extraClass = index >= 10 ? ' hidden extra-task' : '';
+                    div.className = `task-item ${t.isFinished ? 'task-finished' : ''}${extraClass}`;
+                    
+                    div.innerHTML = `
+                        <div class="task-header">${t.task}${tagsHtml}</div>
+                        <div class="task-details">
+                            範疇: ${t.aspect} &nbsp;|&nbsp; 狀態: ${t.progress}<br>
+                            ${deadlineText}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // 展開按鈕邏輯
+                if (tasks.length > 10) {
+                    const btn = document.createElement('button');
+                    btn.className = 'toggle-btn';
+                    const hiddenCount = tasks.length - 10;
+                    btn.innerText = `展開其餘 ${hiddenCount} 個任務`;
+                    
+                    btn.onclick = function() {
+                        const hiddenTasks = container.querySelectorAll('.extra-task');
+                        const isExpanding = hiddenTasks[0].classList.contains('hidden');
+                        
+                        hiddenTasks.forEach(task => {
+                            if (isExpanding) task.classList.remove('hidden');
+                            else task.classList.add('hidden');
+                        });
+                        
+                        if (isExpanding) btn.innerText = '收起任務';
+                        else btn.innerText = `展開其餘 ${hiddenCount} 個任務`;
+                    };
+                    container.appendChild(btn);
+                }
+            });
+
+            // 3. 設定專案 (Project) 下拉選單及渲染邏輯
+            const projectSelect = document.getElementById('project-select');
+            const projectContainer = document.getElementById('project-task-list');
+            
+            // 自訂排序：按字母順序排，但「NO」永遠排在最後
+            const projectNames = Object.keys(projects).sort((a, b) => {
+                const aUpper = a.toUpperCase();
+                const bUpper = b.toUpperCase();
+                
+                if (aUpper === 'NO' && bUpper !== 'NO') return 1;
+                if (bUpper === 'NO' && aUpper !== 'NO') return -1;
+                
+                return a.localeCompare(b, 'zh-HK');
+            });
+            
+            if (projectNames.length === 0) {
+                projectSelect.innerHTML = '<option value="">目前沒有任何專案</option>';
+                projectSelect.disabled = true;
+            } else {
+                projectNames.forEach(proj => {
+                    const opt = document.createElement('option');
+                    opt.value = proj;
+                    opt.innerText = `${proj} (${projects[proj].length} 個任務)`;
+                    projectSelect.appendChild(opt);
+                });
+            }
+
+            // 當選擇專案時，動態顯示該專案的任務
+            projectSelect.addEventListener('change', function() {
+                const selectedProj = this.value;
+                projectContainer.innerHTML = ''; 
+
+                if (!selectedProj) return;
+
+                const projTasks = projects[selectedProj];
+                
+                projTasks.sort(sortTasksLogic);
+
+                projTasks.forEach(t => {
+                    const deadlineText = generateDeadlineHtml(t.deadlineStr, t.isFinished);
+
+                    let tagsHtml = '';
+                    if (t.isImportant) tagsHtml += `<span class="tag tag-imp">Important</span>`;
+                    if (t.isUrgent) tagsHtml += `<span class="tag tag-urg">Urgent</span>`;
+
+                    const div = document.createElement('div');
+                    div.className = `task-item ${t.isFinished ? 'task-finished' : ''}`;
+                    
+                    div.innerHTML = `
+                        <div class="task-header">${t.task}${tagsHtml}</div>
+                        <div class="task-details">
+                            負責人: <strong>${t.picStr || '未分配'}</strong> &nbsp;|&nbsp; 狀態: ${t.progress}<br>
+                            ${deadlineText}
+                        </div>
+                    `;
+                    projectContainer.appendChild(div);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
