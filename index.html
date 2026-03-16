@@ -12,20 +12,58 @@
             height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #ffffff;
+            overflow: hidden; /* 防止整個頁面出現不必要的捲動 */
         }
 
-        /* 左側選單樣式 */
+        /* --- 手機版頂部導覽列 (預設隱藏，只在手機顯示) --- */
+        .mobile-header {
+            display: none;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px 15px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mobile-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mobile-header img {
+            width: 28px;
+            height: auto;
+        }
+
+        .mobile-header h1 {
+            font-size: 20px;
+            color: #1a1a1a;
+            margin: 0;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+            padding: 5px;
+        }
+
+        /* --- 左側選單樣式 --- */
         .sidebar {
             width: 260px;
-            background-color: #f8f9fa; /* 淺灰色背景 */
+            background-color: #f8f9fa;
             border-right: 1px solid #e0e0e0;
             padding: 20px 15px;
             overflow-y: auto;
             flex-shrink: 0;
+            transition: transform 0.3s ease; /* 加入滑動動畫 */
         }
 
-        /* 主標題與 Logo 區塊 */
-        .sidebar h1 {
+        /* 桌面版 Logo 區塊 */
+        .sidebar-header h1 {
             font-size: 24px;
             color: #1a1a1a;
             margin-top: 0;
@@ -33,34 +71,46 @@
             padding-left: 10px;
             display: flex;
             align-items: center;
-            gap: 12px; /* Logo 與文字的間距 */
+            gap: 12px;
         }
 
-        /* Logo 圖片設定 */
-        .sidebar h1 img {
-            width: 32px; /* 控制 Logo 寬度，可依實際圖片比例微調 */
+        .sidebar-header h1 img {
+            width: 32px;
             height: auto;
         }
+        
+        /* 手機版關閉按鈕 (預設隱藏) */
+        .close-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
 
-        /* 分類標題 (深藍色、大字體) */
+        /* 分類標題 */
         .category-title {
-            font-size: 16px; /* 放大字體 */
+            font-size: 16px;
             font-weight: bold;
-            color: #003366; /* 深藍色 */
+            color: #003366;
             margin-top: 25px;
             margin-bottom: 10px;
             padding-left: 10px;
             padding-bottom: 5px;
-            border-bottom: 2px solid #003366; /* 增加底線提升層次感 */
+            border-bottom: 2px solid #003366;
         }
 
         /* 連結按鈕 */
         .sidebar a {
             display: block;
-            padding: 8px 10px;
+            padding: 10px 10px; /* 加大上下 padding，讓手機更容易點擊 */
             color: #333333;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 15px; /* 字體稍微放大一點點 */
             border-radius: 6px;
             margin-bottom: 4px;
             transition: all 0.2s ease;
@@ -72,19 +122,91 @@
             font-weight: 500;
         }
 
-        /* 右側顯示區塊 (iframe) 樣式 */
+        /* --- 右側顯示區塊 (iframe) 樣式 --- */
+        .content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
         .content-frame {
             flex-grow: 1;
             border: none;
+            width: 100%;
             height: 100%;
             background-color: #ffffff;
+        }
+
+        /* --- RWD 響應式設計 (針對手機螢幕寬度小於 768px 時) --- */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column; /* 改為上下排列 */
+            }
+
+            .mobile-header {
+                display: flex; /* 顯示手機版頂部 */
+            }
+
+            .sidebar {
+                position: fixed; /* 將選單固定在畫面上方層 */
+                top: 0;
+                left: 0;
+                height: 100%;
+                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                transform: translateX(-100%); /* 預設將選單向左平移隱藏出畫面 */
+            }
+
+            /* 當選單被加上 active class 時滑出 */
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .sidebar-header {
+                display: none; /* 隱藏原本側邊欄的 Logo，因為手機版頂部已經有了 */
+            }
+
+            .close-btn {
+                display: block; /* 顯示關閉按鈕 */
+            }
+
+            /* 加上一層半透明黑底，點擊外部可關閉選單 */
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .overlay.active {
+                display: block;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <h1><img src="logo.png" alt="Pi tools logo"> Pi tools</h1>
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <img src="logo.png" alt="Pi tools logo">
+            <h1>Pi tools</h1>
+        </div>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="toggleMenu()">×</button>
+        
+        <div class="sidebar-header">
+            <h1><img src="logo.png" alt="Pi tools logo"> Pi tools</h1>
+        </div>
         
         <div class="category-title">Tutor & Course Management</div>
         <a href="pi timetable.html" target="viewer">Pi Timetable</a>
@@ -101,7 +223,29 @@
         <a href="one on one meeting form.html" target="viewer">1-on-1 Meeting Form</a>
     </div>
 
-    <iframe src="pi timetable.html" name="viewer" class="content-frame"></iframe>
+    <div class="content-area">
+        <iframe src="pi timetable.html" name="viewer" class="content-frame"></iframe>
+    </div>
 
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const links = document.querySelectorAll('.sidebar a');
+
+        // 切換選單的函數
+        function toggleMenu() {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // 當點擊左側任何一個連結時，如果是手機版模式，就自動收合選單
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleMenu();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
