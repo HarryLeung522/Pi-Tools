@@ -11,7 +11,7 @@
     .row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
     .col { flex: 1; min-width: 140px; }
     label { font-weight: 600; display: block; margin-bottom: 5px; font-size: 14px; color: #444; }
-    input[type="text"], select, input[type="file"], textarea { 
+    input[type="text"], input[type="date"], select, input[type="file"], textarea { 
       width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 14px;
     }
     textarea { resize: vertical; min-height: 80px; font-family: inherit; }
@@ -35,15 +35,22 @@
       </div>
       <div class="row"><div class="col"><label>Project</label><input type="text" id="project" value="NO"></div></div>
       <div class="row"><div class="col"><label>Task <span style="color:red;">*</span></label><input type="text" id="task" required placeholder="請輸入任務名稱..."></div></div>
+      
       <div class="row">
         <div class="col"><label>Important</label><select id="important"><option value="YES">YES</option><option value="NO" selected>NO</option></select></div>
         <div class="col"><label>Urgent</label><select id="urgent"><option value="YES">YES</option><option value="NO" selected>NO</option></select></div>
       </div>
+
+      <div class="row">
+        <div class="col"><label>Deadline (截止日期)</label><input type="date" id="deadline"></div>
+      </div>
+
       <div class="row"><div class="col"><label>Background</label><textarea id="background">-</textarea></div></div>
       <div class="row"><div class="col"><label>Description</label><textarea id="description">-</textarea></div></div>
       <div class="row"><div class="col"><label>Key output</label><textarea id="keyOutput">-</textarea></div></div>
       <div class="row"><div class="col"><label>上傳相片或檔案 (多選)</label><input type="file" id="fileUpload" multiple></div></div>
-      <div class="checkbox-container"><input type="checkbox" id="exportDoc"><label for="exportDoc">同時匯出獨立任務文件</label></div>
+      
+      <div class="checkbox-container"><input type="checkbox" id="exportDoc"><label for="exportDoc">同時匯出獨立任務 PDF</label></div>
 
       <button type="submit" id="submitBtn">傳送任務</button>
       <div id="loader" class="loader">處理中，請稍候...</div>
@@ -53,8 +60,18 @@
   </div>
 
   <script>
-    // ⚠️ 確保填寫最新的 Web App URL
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPZg2063z-x_UCCQMHRGC6rv52tee1D0TM-2orLnx_026r625hpqImoP18PKircWSWNg/exec"; 
+
+    // 初始化日期：設定預設為今天的一星期之後
+    window.onload = function() {
+      const deadlineInput = document.getElementById('deadline');
+      const today = new Date();
+      today.setDate(today.getDate() + 7);
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      deadlineInput.value = `${year}-${month}-${day}`;
+    };
 
     document.getElementById("taskForm").addEventListener("submit", async function(e) {
       e.preventDefault();
@@ -77,6 +94,7 @@
         task: document.getElementById("task").value,
         important: document.getElementById("important").value,
         urgent: document.getElementById("urgent").value,
+        deadline: document.getElementById("deadline").value, // 傳送日期字串 (YYYY-MM-DD)
         background: document.getElementById("background").value,
         description: document.getElementById("description").value,
         keyOutput: document.getElementById("keyOutput").value,
@@ -85,9 +103,7 @@
       };
 
       const fileInput = document.getElementById("fileUpload");
-      
       if (fileInput.files.length > 0) {
-        loader.innerText = `正在處理 ${fileInput.files.length} 個檔案...`;
         const filePromises = Array.from(fileInput.files).map(file => {
           return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -100,7 +116,6 @@
             reader.readAsDataURL(file);
           });
         });
-
         try {
           payload.files = await Promise.all(filePromises);
           sendDataToGAS(payload);
@@ -115,7 +130,6 @@
       }
 
       function sendDataToGAS(data) {
-        loader.innerText = "資料上傳中...";
         fetch(GAS_API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -128,6 +142,8 @@
             successMsg.style.display = "block";
             document.getElementById("taskForm").reset();
             document.getElementById("project").value = "NO";
+            // 重設日期為一星期後
+            window.onload(); 
           } else { throw new Error(result.message); }
         })
         .catch(error => {
