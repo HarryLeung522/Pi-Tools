@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pi tools</title>
     <style>
         /* 基本版面設定 */
@@ -12,10 +12,10 @@
             height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #ffffff;
-            overflow: hidden; /* 防止整個頁面出現不必要的捲動 */
+            overflow: hidden;
         }
 
-        /* --- 手機版頂部導覽列 (預設隱藏，只在手機顯示) --- */
+        /* --- 手機版頂部導覽列 --- */
         .mobile-header {
             display: none;
             background-color: #f8f9fa;
@@ -23,6 +23,11 @@
             padding: 10px 15px;
             align-items: center;
             justify-content: space-between;
+            
+            /* 【修復重點1】確保頂部導覽列永遠在 iframe 之上 */
+            position: relative;
+            z-index: 500; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
         .mobile-header-left {
@@ -42,13 +47,16 @@
             margin: 0;
         }
 
+        /* 【修復重點2】加大按鈕點擊範圍，提升手機觸控靈敏度 */
         .menu-btn {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 26px;
             cursor: pointer;
             color: #333;
-            padding: 5px;
+            padding: 10px 15px;
+            margin: -10px -15px -10px 0; /* 視覺位置不變，但觸控範圍變大 */
+            touch-action: manipulation; /* 停用點擊延遲 */
         }
 
         /* --- 左側選單樣式 --- */
@@ -59,10 +67,11 @@
             padding: 20px 15px;
             overflow-y: auto;
             flex-shrink: 0;
-            transition: transform 0.3s ease; /* 加入滑動動畫 */
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 讓滑動動畫更滑順 */
+            position: relative;
+            z-index: 1000;
         }
 
-        /* 桌面版 Logo 區塊 */
         .sidebar-header h1 {
             font-size: 24px;
             color: #1a1a1a;
@@ -79,20 +88,20 @@
             height: auto;
         }
         
-        /* 手機版關閉按鈕 (預設隱藏) */
         .close-btn {
             display: none;
             background: none;
             border: none;
-            font-size: 28px;
+            font-size: 32px;
             cursor: pointer;
             color: #666;
             position: absolute;
-            top: 15px;
+            top: 10px;
             right: 15px;
+            padding: 10px;
+            touch-action: manipulation;
         }
 
-        /* 分類標題 */
         .category-title {
             font-size: 16px;
             font-weight: bold;
@@ -104,30 +113,31 @@
             border-bottom: 2px solid #003366;
         }
 
-        /* 連結按鈕 */
         .sidebar a {
             display: block;
-            padding: 10px 10px; /* 加大上下 padding，讓手機更容易點擊 */
+            padding: 12px 10px; /* 稍微再加大一點點距離，防誤觸 */
             color: #333333;
             text-decoration: none;
-            font-size: 15px; /* 字體稍微放大一點點 */
+            font-size: 15px;
             border-radius: 6px;
             margin-bottom: 4px;
             transition: all 0.2s ease;
         }
 
-        .sidebar a:hover {
+        .sidebar a:hover, .sidebar a:active {
             background-color: #e9ecef;
             color: #003366;
             font-weight: 500;
         }
 
-        /* --- 右側顯示區塊 (iframe) 樣式 --- */
+        /* --- 右側顯示區塊 --- */
         .content-area {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             width: 100%;
+            position: relative;
+            z-index: 1;
         }
 
         .content-frame {
@@ -138,40 +148,37 @@
             background-color: #ffffff;
         }
 
-        /* --- RWD 響應式設計 (針對手機螢幕寬度小於 768px 時) --- */
+        /* --- RWD 手機版設定 --- */
         @media (max-width: 768px) {
             body {
-                flex-direction: column; /* 改為上下排列 */
+                flex-direction: column;
             }
 
             .mobile-header {
-                display: flex; /* 顯示手機版頂部 */
+                display: flex;
             }
 
             .sidebar {
-                position: fixed; /* 將選單固定在畫面上方層 */
+                position: fixed;
                 top: 0;
                 left: 0;
                 height: 100%;
-                z-index: 1000;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-                transform: translateX(-100%); /* 預設將選單向左平移隱藏出畫面 */
+                box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+                transform: translateX(-100%);
             }
 
-            /* 當選單被加上 active class 時滑出 */
             .sidebar.active {
                 transform: translateX(0);
             }
 
             .sidebar-header {
-                display: none; /* 隱藏原本側邊欄的 Logo，因為手機版頂部已經有了 */
+                display: none;
             }
 
             .close-btn {
-                display: block; /* 顯示關閉按鈕 */
+                display: block;
             }
 
-            /* 加上一層半透明黑底，點擊外部可關閉選單 */
             .overlay {
                 display: none;
                 position: fixed;
@@ -181,6 +188,7 @@
                 height: 100%;
                 background: rgba(0,0,0,0.5);
                 z-index: 999;
+                backdrop-filter: blur(2px); /* 讓背景有微微模糊的高級感 */
             }
 
             .overlay.active {
@@ -196,13 +204,13 @@
             <img src="logo.png" alt="Pi tools logo">
             <h1>Pi tools</h1>
         </div>
-        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <button class="menu-btn" id="menuBtn">☰</button>
     </div>
 
-    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+    <div class="overlay" id="overlay"></div>
 
     <div class="sidebar" id="sidebar">
-        <button class="close-btn" onclick="toggleMenu()">×</button>
+        <button class="close-btn" id="closeBtn">×</button>
         
         <div class="sidebar-header">
             <h1><img src="logo.png" alt="Pi tools logo"> Pi tools</h1>
@@ -229,8 +237,33 @@
     </div>
 
     <script>
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        const links = document.querySelectorAll('.sidebar a');
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const menuBtn = document.getElementById('menuBtn');
+            const closeBtn = document.getElementById('closeBtn');
+            const links = document.querySelectorAll('.sidebar a');
 
-        // 切換
+            // 切換選單狀態的函數
+            function toggleMenu() {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            }
+
+            // 將點擊事件綁定到按鈕與遮罩上
+            if(menuBtn) menuBtn.addEventListener('click', toggleMenu);
+            if(closeBtn) closeBtn.addEventListener('click', toggleMenu);
+            if(overlay) overlay.addEventListener('click', toggleMenu);
+
+            // 點擊連結後自動收合選單
+            links.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        toggleMenu();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
