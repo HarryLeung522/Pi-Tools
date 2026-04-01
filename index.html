@@ -220,6 +220,7 @@
         <div class="category-title">Leadership</div>
         <a href="mission board.html" target="viewer">Mission Board</a>
         <a href="mission dashboard.html" target="viewer">Mission Dashboard</a>
+        <a href="mission delivery.html" target="viewer">Mission Delivery</a>
         <a href="one on one meeting form.html" target="viewer">1-on-1 Meeting Form</a>
     </div>
 
@@ -232,20 +233,4 @@
         const overlay = document.getElementById('overlay');
         const links = document.querySelectorAll('.sidebar a');
 
-        // 切換選單的函數
-        function toggleMenu() {
-            sidebar.classList.toggle('active');
-            overlay.classList.toggle('active');
-        }
-
-        // 當點擊左側任何一個連結時，如果是手機版模式，就自動收合選單
-        links.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    toggleMenu();
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+        // 切換
