@@ -21,7 +21,7 @@
             overflow: hidden;
         }
 
-        /* --- 左側側邊欄 --- */
+        /* --- 左側側邊欄 (電腦版) --- */
         .sidebar {
             width: var(--sidebar-width);
             background-color: var(--bg-gray);
@@ -94,7 +94,7 @@
             border-bottom: 2px solid var(--deep-blue);
         }
 
-        /* 工具連結連結 */
+        /* 工具連結按鈕 */
         .sidebar a {
             display: block;
             padding: 10px 12px;
@@ -142,7 +142,7 @@
             height: 100%;
         }
 
-        /* --- 手機版適應 --- */
+        /* --- 手機版頂部選單 --- */
         .mobile-top-bar {
             display: none;
             background: var(--bg-gray);
@@ -150,24 +150,58 @@
             border-bottom: 1px solid #ddd;
             align-items: center;
             justify-content: space-between;
+            position: relative;
+            z-index: 1001; /* 確保在最上層 */
         }
 
+        /* --- RWD 手機版介面 (小於 768px 時生效) --- */
         @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100%;
-                margin-left: 0;
-                transform: translateX(-100%);
+            body {
+                flex-direction: column; /* 改為上下排列 */
             }
-            .sidebar.active { transform: translateX(0); }
-            .mobile-top-bar { display: flex; }
-            .toggle-btn.desktop-only { display: none; }
-            .floating-open-btn { display: none !important; }
+            .mobile-top-bar {
+                display: flex; /* 顯示手機版頂部 */
+            }
+            .toggle-btn.desktop-only {
+                display: none; /* 隱藏電腦版的收合按鈕 */
+            }
+            .floating-open-btn {
+                display: none !important; /* 隱藏電腦版浮動按鈕 */
+            }
+            .sidebar-header {
+                display: none; /* 隱藏選單內的 Logo，因為頂部已經有了 */
+            }
+
+            /* 核心修改：將側邊欄變成右上角彈出的選單 */
+            .sidebar {
+                position: absolute;
+                top: 65px; /* 位於頂部選單下方 */
+                right: 15px; /* 靠右對齊 */
+                left: auto;
+                width: 260px; /* 控制選單寬度 */
+                max-height: calc(100vh - 90px);
+                margin-left: 0;
+                background-color: #ffffff;
+                border: 1px solid #ddd;
+                border-radius: 8px; /* 圓角看起來更像懸浮選單 */
+                box-shadow: 0 5px 20px rgba(0,0,0,0.15); /* 增加陰影 */
+                
+                /* 隱藏狀態 */
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-10px);
+                transition: all 0.2s ease;
+            }
+
+            /* 展開狀態 */
+            .sidebar.active {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
         }
 
-        /* 遮罩 */
+        /* 遮罩 (手機版開啟選單時變暗) */
         .overlay {
             display: none;
             position: fixed;
@@ -205,7 +239,7 @@
             <a href="pi timetable.html" target="viewer">Pi Timetable</a>
             <a href="tutor dashboard.html" target="viewer">Tutor Dashboard</a>
             <a href="tutor reminder.html" target="viewer">Tutor Reminder</a>
-            <a href="https://docs.google.com/spreadsheets/d/1Pvf0uVyTXVtyRDH0nZeExi_xhbpieq_DYvnNJBwmYGQ/edit?gid=0#gid=0" target="viewer">課程總匯.GS</a>
+            <a href="https://docs.google.com/spreadsheets/d/1vQFFF43IJhu4qgR8KiR_Oo9lwv7LkuTcjHzebpTvUd-SnnivG_5GwDT3-JzEncLTxKXbZuQ8LnU90n3/edit?rm=minimal" target="viewer">課程總匯.GS</a>
 
             <div class="category-title">Accounting</div>
             <a href="red 4.0.html" target="viewer">Red 4.0</a>
@@ -232,11 +266,12 @@
             const isMobile = window.innerWidth <= 768;
 
             if (isMobile) {
+                // 手機版：切換右上角下拉選單與遮罩
                 sidebar.classList.toggle('active');
                 overlay.classList.toggle('active');
             } else {
+                // 電腦版：左側推移收合
                 sidebar.classList.toggle('collapsed');
-                // 控制桌面版浮動按鈕顯示
                 if (sidebar.classList.contains('collapsed')) {
                     openBtn.style.display = 'block';
                 } else {
@@ -245,10 +280,12 @@
             }
         }
 
-        // 點擊連結後，如果是手機版則自動收合
+        // 點擊任何工具連結後，如果是手機版則自動關閉右上角選單
         document.querySelectorAll('.sidebar a').forEach(link => {
             link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) toggleSidebar();
+                if (window.innerWidth <= 768) {
+                    toggleSidebar();
+                }
             });
         });
     </script>
