@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成本製作</title>
+    <!-- 引入 Tailwind CSS 進行快速 UI 佈局與美化 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隱藏預設的 input number 箭頭 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        
+        <!-- 頁面標題 -->
+        <header>
+            <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                成本製作
+            </h1>
+        </header>
+
+        <!-- 上部分：Course / Activity / Product -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-blue-50/50 px-6 py-4 border-b border-slate-200">
+                <h2 id="mainSectionTitle" class="text-xl font-semibold text-blue-800">Course (課程設定)</h2>
+            </div>
+            
+            <div class="p-6">
+                <!-- 收費模式選擇 -->
+                <div class="mb-6">
+                    <label for="feeType" class="block text-sm font-medium text-slate-600 mb-2">請選擇收費模式</label>
+                    <select id="feeType" class="w-full md:w-64 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition">
+                        <option value="session">課堂報價（堂數）</option>
+                        <option value="person">課堂報價（人數）</option>
+                        <option value="activity">活動日報價</option>
+                        <option value="product">Product收費</option>
+                    </select>
+                </div>
+
+                <!-- ==================== 1. 課堂報價（堂數）區塊 ==================== -->
+                <div id="sessionSection" class="space-y-8 block">
+                    <!-- 輸入欄位 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-5 rounded-lg border border-slate-100">
+                        <div>
+                            <label for="sessionFee" class="block text-sm font-medium text-slate-700 mb-2">每堂收費 ($)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="sessionFee" placeholder="例: 1200" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="sessionCount" class="block text-sm font-medium text-slate-700 mb-2">堂數</label>
+                            <input type="number" id="sessionCount" placeholder="例: 4" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                        </div>
+                        <div>
+                            <label for="tutorCost" class="block text-sm font-medium text-slate-700 mb-2">導師成本 ($/堂)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="tutorCost" placeholder="例: 500" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 試算結果表格 -->
+                    <div id="sessionTableContainer" class="hidden">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-slate-800">價格與利潤試算表</h3>
+                            <span class="text-xs font-medium bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded">價錢上下浮動 $50 (±5行)</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-slate-200">
+                            <table class="w-full text-sm text-left text-slate-600">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-center">價錢</th>
+                                        <th scope="col" class="px-6 py-3 text-center">導師成本</th>
+                                        <th scope="col" class="px-6 py-3 text-center">堂數</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Total Cost<br><span class="text-[10px] text-slate-400 normal-case">(導師成本 × 堂數)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Revenue<br><span class="text-[10px] text-slate-400 normal-case">(價錢 × 堂數)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit<br><span class="text-[10px] text-slate-400 normal-case">(Revenue - Total Cost)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit %<br><span class="text-[10px] text-slate-400 normal-case">(Profit / Revenue)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionTableBody" class="divide-y divide-slate-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 2. 課堂報價（人數）區塊 ==================== -->
+                <div id="personSection" class="hidden space-y-8">
+                    <!-- 輸入欄位 -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 bg-slate-50 p-5 rounded-lg border border-slate-100">
+                        <div>
+                            <label for="personFee" class="block text-sm font-medium text-slate-700 mb-2">每人每堂收費 ($)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="personFee" placeholder="例: 200" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="personSessionCount" class="block text-sm font-medium text-slate-700 mb-2">堂數</label>
+                            <input type="number" id="personSessionCount" placeholder="例: 4" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                        </div>
+                        <div>
+                            <label for="personTutorCost" class="block text-sm font-medium text-slate-700 mb-2">導師成本 ($/堂)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="personTutorCost" placeholder="例: 500" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="minStudents" class="block text-sm font-medium text-slate-700 mb-2">最低開班人數</label>
+                            <input type="number" id="minStudents" value="8" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- 變數選擇與試算結果表格 -->
+                    <div id="personTableContainer" class="hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                            <h3 class="text-lg font-semibold text-slate-800">人數與利潤試算表</h3>
+                            
+                            <div class="flex items-center gap-3">
+                                <label for="variableType" class="text-sm font-medium text-slate-600">變數：</label>
+                                <select id="variableType" class="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none shadow-sm">
+                                    <option value="price">價錢延伸 (每$5上下延伸6行)</option>
+                                    <option value="headcount">人數延伸 (6-24人)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto rounded-lg border border-slate-200">
+                            <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-center">每人每堂收費</th>
+                                        <th scope="col" class="px-6 py-3 text-center">堂數</th>
+                                        <th scope="col" class="px-6 py-3 text-center">每人總收費</th>
+                                        <th scope="col" class="px-6 py-3 text-center bg-blue-50 text-blue-800">學生人數</th>
+                                        <th scope="col" class="px-6 py-3 text-center">導師成本<br><span class="text-[10px] text-slate-400 normal-case">(總計)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Revenue</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="personTableBody" class="divide-y divide-slate-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 3. 活動日報價區塊 ==================== -->
+                <div id="activitySection" class="hidden space-y-8">
+                    
+                    <!-- 工作坊 (Workshop) -->
+                    <div class="bg-indigo-50/40 p-5 rounded-lg border border-indigo-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                工作坊 (Workshop)
+                            </h3>
+                        </div>
+                        
+                        <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white mb-4 shadow-sm">
+                            <table class="w-full text-sm text-left text-slate-600 min-w-[1000px]">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                    <tr>
+                                        <th scope="col" class="px-3 py-3 text-center">教材名稱</th>
+                                        <th scope="col" class="px-3 py-3 text-center">教材成本<br><span class="text-[10px] text-slate-500 normal-case">(每人)</span></th>
+                                        <th scope="col" class="px-3 py-3 text-center">班別人數</th>
+                                        <th scope="col" class="px-3 py-3 text-center">班別數量</th>
+                                        <th scope="col" class="px-3 py-3 text-center">導師成本<br><span class="text-[10px] text-slate-500 normal-case">(每班)</span></th>
+                                        <th scope="col" class="px-3 py-3 text-center">每班收費</th>
+                                        <th scope="col" class="px-3 py-3 text-center bg-indigo-50/50">總成本</th>
+                                        <th scope="col" class="px-3 py-3 text-center">Revenue</th>
+                                        <th scope="col" class="px-3 py-3 text-center">Profit</th>
+                                        <th scope="col" class="px-3 py-3 text-center">Profit %</th>
+                                        <th scope="col" class="px-3 py-3 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workshopTableBody" class="divide-y divide-slate-200">
+                                    <!-- 動態插入 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <button id="addWorkshopBtn" class="flex items-center gap-1 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            新增班別
+                        </button>
+                    </div>
+
+                    <!-- 攤位 (Booth) -->
+                    <div class="bg-teal-50/40 p-5 rounded-lg border border-teal-100">
+                        <h3 class="text-lg font-semibold text-teal-800 mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            攤位 (Booth)
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                            <div>
+                                <label for="boothFee" class="block text-sm font-medium text-slate-700 mb-2">每個攤位收費</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-500 sm:text-sm">$</span></div>
+                                    <input type="number" id="boothFee" placeholder="0" class="pl-7 w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-500 transition shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="boothCount" class="block text-sm font-medium text-slate-700 mb-2">攤位數量</label>
+                                <input type="number" id="boothCount" placeholder="0" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-500 transition shadow-sm">
+                            </div>
+                            <div>
+                                <label for="boothTutorCost" class="block text-sm font-medium text-slate-700 mb-2">導師成本 (每個)</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-500 sm:text-sm">$</span></div>
+                                    <input type="number" id="boothTutorCost" placeholder="0" class="pl-7 w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-500 transition shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="boothMaterialCost" class="block text-sm font-medium text-slate-700 mb-2">教材成本 (總共)</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-500 sm:text-sm">$</span></div>
+                                    <input type="number" id="boothMaterialCost" placeholder="0" class="pl-7 w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-500 transition shadow-sm">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 攤位結算面板 -->
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-wrap gap-8 items-center justify-between">
+                            <span class="text-slate-500 font-medium hidden md:block">攤位結算預覽：</span>
+                            <div class="flex flex-wrap gap-8">
+                                <div class="text-center md:text-left">
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">總成本</p>
+                                    <p id="boothCostDisplay" class="text-xl font-bold text-slate-800">$0</p>
+                                </div>
+                                <div class="text-center md:text-left">
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Revenue</p>
+                                    <p id="boothRevenueDisplay" class="text-xl font-bold text-slate-800" data-value="0">$0</p>
+                                </div>
+                                <div class="text-center md:text-left">
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Profit</p>
+                                    <p id="boothProfitDisplay" class="text-xl font-bold text-emerald-600">$0</p>
+                                </div>
+                                <div class="text-center md:text-left">
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Profit %</p>
+                                    <p id="boothProfitPctDisplay" class="text-xl font-bold text-emerald-600">0.0%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ==================== 4. Product 收費區塊 ==================== -->
+                <div id="productSection" class="hidden space-y-8">
+                    <!-- 輸入欄位 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-5 rounded-lg border border-slate-100">
+                        <div>
+                            <label for="productPrice" class="block text-sm font-medium text-slate-700 mb-2">產品售價 ($/件)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="productPrice" placeholder="例: 500" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="productQty" class="block text-sm font-medium text-slate-700 mb-2">預計數量 (件/人)</label>
+                            <input type="number" id="productQty" value="10" placeholder="例: 10" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                        </div>
+                        <div>
+                            <label for="productCost" class="block text-sm font-medium text-slate-700 mb-2">其他成本 ($/件)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="productCost" placeholder="例: 100" class="pl-7 w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 試算結果表格 -->
+                    <div id="productTableContainer" class="hidden">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-slate-800">產品價格與利潤試算表</h3>
+                            <span class="text-xs font-medium bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded">售價上下浮動 $20 (±5行)</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-slate-200">
+                            <table class="w-full text-sm text-left text-slate-600">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-center">產品售價</th>
+                                        <th scope="col" class="px-6 py-3 text-center">其他成本(件)</th>
+                                        <th scope="col" class="px-6 py-3 text-center">數量</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Total Cost<br><span class="text-[10px] text-slate-400 normal-case">(成本 × 數量)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Revenue<br><span class="text-[10px] text-slate-400 normal-case">(售價 × 數量)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit<br><span class="text-[10px] text-slate-400 normal-case">(Revenue - Total Cost)</span></th>
+                                        <th scope="col" class="px-6 py-3 text-center">Profit %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productTableBody" class="divide-y divide-slate-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 下部分：材料 -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-amber-50/50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-amber-800">材料 (Materials)</h2>
+            </div>
+            
+            <div class="p-6">
+                <!-- 材料表單 -->
+                <div id="materialContent" class="space-y-4">
+                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                        <table class="w-full text-sm text-left text-slate-600 min-w-[800px]">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 w-1/4">項目</th>
+                                    <th scope="col" class="px-4 py-3 w-24 text-center">數量</th>
+                                    <th scope="col" class="px-4 py-3 w-28 text-center">RMB/HKD</th>
+                                    <th scope="col" class="px-4 py-3 w-28 text-center">RMB單價</th>
+                                    <th scope="col" class="px-4 py-3 w-28 text-center">匯率</th>
+                                    <th scope="col" class="px-4 py-3 w-28 text-center">HKD單價</th>
+                                    <th scope="col" class="px-4 py-3 w-28 text-center bg-amber-50">小計 (HKD)</th>
+                                    <th scope="col" class="px-4 py-3 w-16 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materialTableBody" class="divide-y divide-slate-200">
+                                <!-- 動態插入的材料行 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 操作區及總計 -->
+                    <div class="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <button id="addMaterialBtn" class="flex items-center gap-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-amber-600 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            新增行數
+                        </button>
+                        
+                        <div class="text-right flex items-center gap-4">
+                            <span class="text-slate-600 font-medium">材料價錢總數：</span>
+                            <span id="materialTotalDisplay" class="text-2xl font-bold text-amber-600" data-value="0">$0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 隱藏用佔位 (如有需要) -->
+                <div id="materialPlaceholder" class="hidden py-8 text-center bg-slate-50 rounded-lg border border-slate-100 border-dashed">
+                    <p class="text-slate-500">此模式下的材料計算功能稍後更改...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 底部小總結 -->
+        <section class="bg-slate-800 rounded-xl shadow-lg border border-slate-700 overflow-hidden mb-8">
+            <div class="p-6 md:p-8">
+                <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    項目小總結
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-600">
+                    <div class="text-center pt-4 md:pt-0">
+                        <p id="summaryCourseLabel" class="text-slate-400 text-sm font-medium mb-1">課程收費 (Course Fee)</p>
+                        <p id="summaryCourseFee" class="text-3xl font-bold text-white">$0</p>
+                    </div>
+                    <div class="text-center pt-4 md:pt-0">
+                        <p class="text-slate-400 text-sm font-medium mb-1">材料收費 (Material Fee)</p>
+                        <p id="summaryMaterialFee" class="text-3xl font-bold text-amber-400">$0</p>
+                    </div>
+                    <div class="text-center pt-4 md:pt-0">
+                        <p class="text-slate-400 text-sm font-medium mb-1">總收費 (Total Revenue)</p>
+                        <p id="summaryTotalFee" class="text-4xl font-black text-emerald-400">$0</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        // 數字格式化共用函式
+        const formatCurrency = (num) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 共用與版面切換
+            const feeTypeSelect = document.getElementById('feeType');
+            const sections = {
+                session: document.getElementById('sessionSection'),
+                person: document.getElementById('personSection'),
+                activity: document.getElementById('activitySection'),
+                product: document.getElementById('productSection')
+            };
+            
+            const materialContent = document.getElementById('materialContent');
+            const materialPlaceholder = document.getElementById('materialPlaceholder');
+
+            const mainSectionTitle = document.getElementById('mainSectionTitle');
+            const summaryCourseLabel = document.getElementById('summaryCourseLabel');
+
+            // 切換主要版面
+            feeTypeSelect.addEventListener('change', (e) => {
+                Object.values(sections).forEach(sec => sec.classList.add('hidden'));
+                
+                const val = e.target.value;
+
+                // 動態修改區塊標題與總結文字
+                if (val === 'product') {
+                    mainSectionTitle.textContent = 'Product (產品設定)';
+                    summaryCourseLabel.textContent = '產品收費 (Product Fee)';
+                } else if (val === 'activity') {
+                    mainSectionTitle.textContent = 'Activity (活動日設定)';
+                    summaryCourseLabel.textContent = '活動收費 (Activity Fee)';
+                } else {
+                    mainSectionTitle.textContent = 'Course (課程設定)';
+                    summaryCourseLabel.textContent = '課程收費 (Course Fee)';
+                }
+                
+                if (val === 'session') {
+                    sections.session.classList.remove('hidden');
+                    calculateSessionTable();
+                    materialContent.classList.remove('hidden');
+                    materialPlaceholder.classList.add('hidden');
+                } else if (val === 'person') {
+                    sections.person.classList.remove('hidden');
+                    calculatePersonTable();
+                    materialContent.classList.remove('hidden');
+                    materialPlaceholder.classList.add('hidden');
+
+                    const firstRowQty = document.querySelector('.mat-qty');
+                    const firstRowName = document.querySelector('.material-row input[type="text"]');
+                    if (firstRowQty && firstRowQty.value === '1' && firstRowName && firstRowName.value === '') {
+                        const minSt = parseInt(document.getElementById('minStudents').value) || 8;
+                        firstRowQty.value = minSt;
+                        firstRowQty.dispatchEvent(new Event('input')); 
+                    }
+                } else if (val === 'activity') {
+                    sections.activity.classList.remove('hidden');
+                    calculateBooth();
+                    materialContent.classList.remove('hidden');
+                    materialPlaceholder.classList.add('hidden');
+                } else if (val === 'product') {
+                    sections.product.classList.remove('hidden');
+                    calculateProductTable();
+                    materialContent.classList.remove('hidden');
+                    materialPlaceholder.classList.add('hidden');
+
+                    const firstRowQty = document.querySelector('.mat-qty');
+                    const firstRowName = document.querySelector('.material-row input[type="text"]');
+                    if (firstRowQty && firstRowQty.value === '1' && firstRowName && firstRowName.value === '') {
+                        const pQty = parseInt(document.getElementById('productQty').value) || 10;
+                        firstRowQty.value = pQty;
+                        firstRowQty.dispatchEvent(new Event('input')); 
+                    }
+                }
+                updateSummary();
+            });
+
+            // ==================== 1. 課程報價（堂數）邏輯 ====================
+            const sessionInputs = ['sessionFee', 'sessionCount', 'tutorCost'].map(id => document.getElementById(id));
+            const sessionTableContainer = document.getElementById('sessionTableContainer');
+            const sessionTableBody = document.getElementById('sessionTableBody');
+
+            sessionInputs.forEach(input => input.addEventListener('input', () => {
+                calculateSessionTable();
+                updateSummary();
+            }));
+
+            function calculateSessionTable() {
+                const basePrice = parseFloat(sessionInputs[0].value);
+                const count = parseFloat(sessionInputs[1].value);
+                const tutorCost = parseFloat(sessionInputs[2].value);
+
+                if (isNaN(basePrice) || isNaN(count) || isNaN(tutorCost)) {
+                    sessionTableContainer.classList.add('hidden');
+                    return;
+                }
+
+                sessionTableContainer.classList.remove('hidden');
+                sessionTableBody.innerHTML = '';
+
+                for (let i = -5; i <= 5; i++) {
+                    const currentPrice = basePrice + (i * 50);
+                    if (currentPrice <= 0 && currentPrice !== basePrice) continue;
+
+                    const totalCost = tutorCost * count;
+                    const revenue = currentPrice * count;
+                    const profit = revenue - totalCost;
+                    const profitPercentage = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+                    let profitColor = profit > 0 ? 'text-emerald-600 font-medium' : (profit < 0 ? 'text-rose-600 font-medium' : 'text-slate-600');
+                    const isBaseRow = (i === 0);
+                    const rowClass = isBaseRow ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200 font-bold text-blue-900' : 'bg-white hover:bg-slate-50 text-slate-600';
+
+                    sessionTableBody.insertAdjacentHTML('beforeend', `
+                        <tr class="${rowClass}">
+                            <td class="px-6 py-3 text-center">$${formatCurrency(currentPrice)}</td>
+                            <td class="px-6 py-3 text-center">$${formatCurrency(tutorCost)}</td>
+                            <td class="px-6 py-3 text-center">${count}</td>
+                            <td class="px-6 py-3 text-center">$${formatCurrency(totalCost)}</td>
+                            <td class="px-6 py-3 text-center font-medium">$${formatCurrency(revenue)}</td>
+                            <td class="px-6 py-3 text-center ${profitColor}">$${formatCurrency(profit)}</td>
+                            <td class="px-6 py-3 text-center ${profitColor}">${profitPercentage.toFixed(1)}%</td>
+                        </tr>
+                    `);
+                }
+            }
+
+            // ==================== 2. 課程報價（人數）邏輯 ====================
+            const personInputs = ['personFee', 'personSessionCount', 'personTutorCost', 'minStudents'].map(id => document.getElementById(id));
+            const variableTypeSelect = document.getElementById('variableType');
+            const personTableContainer = document.getElementById('personTableContainer');
+            const personTableBody = document.getElementById('personTableBody');
+
+            [...personInputs, variableTypeSelect].forEach(el => el.addEventListener('input', () => {
+                calculatePersonTable();
+                updateSummary();
+            }));
+
+            function calculatePersonTable() {
+                const feePerSession = parseFloat(personInputs[0].value);
+                const sessions = parseFloat(personInputs[1].value);
+                const tutorCostPerSession = parseFloat(personInputs[2].value);
+                let minStudents = parseInt(personInputs[3].value);
+                const variableType = variableTypeSelect.value;
+
+                if (isNaN(minStudents) || minStudents < 1) minStudents = 8;
+
+                if (isNaN(feePerSession) || isNaN(sessions) || isNaN(tutorCostPerSession)) {
+                    personTableContainer.classList.add('hidden');
+                    return;
+                }
+
+                personTableContainer.classList.remove('hidden');
+                personTableBody.innerHTML = '';
+
+                const totalTutorCost = tutorCostPerSession * sessions;
+
+                if (variableType === 'price') {
+                    for (let i = -6; i <= 6; i++) {
+                        const currentFee = feePerSession + (i * 5);
+                        if (currentFee <= 0 && currentFee !== feePerSession) continue;
+                        appendPersonRow(currentFee, sessions, minStudents, totalTutorCost, i === 0);
+                    }
+                } else if (variableType === 'headcount') {
+                    for (let students = 6; students <= 24; students++) {
+                        appendPersonRow(feePerSession, sessions, students, totalTutorCost, students === minStudents);
+                    }
+                }
+            }
+
+            function appendPersonRow(feePerSession, sessions, students, totalTutorCost, isHighlightRow) {
+                const totalFeePerPerson = feePerSession * sessions;
+                const revenue = totalFeePerPerson * students;
+                const profit = revenue - totalTutorCost;
+                const profitPercentage = revenue > 0 ? (profit / revenue) * 100 : 0;
+                let profitColor = profit > 0 ? 'text-emerald-600 font-medium' : (profit < 0 ? 'text-rose-600 font-medium' : 'text-slate-600');
+                const rowClass = isHighlightRow ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200 font-bold text-blue-900' : 'bg-white hover:bg-slate-50 text-slate-600 transition-colors';
+
+                personTableBody.insertAdjacentHTML('beforeend', `
+                    <tr class="${rowClass}">
+                        <td class="px-6 py-3 text-center">$${formatCurrency(feePerSession)}</td>
+                        <td class="px-6 py-3 text-center">${sessions}</td>
+                        <td class="px-6 py-3 text-center font-medium">$${formatCurrency(totalFeePerPerson)}</td>
+                        <td class="px-6 py-3 text-center text-blue-700 font-bold bg-blue-50/30">${students}</td>
+                        <td class="px-6 py-3 text-center">$${formatCurrency(totalTutorCost)}</td>
+                        <td class="px-6 py-3 text-center font-medium">$${formatCurrency(revenue)}</td>
+                        <td class="px-6 py-3 text-center ${profitColor}">$${formatCurrency(profit)}</td>
+                        <td class="px-6 py-3 text-center ${profitColor}">${profitPercentage.toFixed(1)}%</td>
+                    </tr>
+                `);
+            }
+
+            // ==================== 3. 活動日報價邏輯 ====================
+            // 工作坊
+            const workshopTableBody = document.getElementById('workshopTableBody');
+            const addWorkshopBtn = document.getElementById('addWorkshopBtn');
+            
+            addWorkshopBtn.addEventListener('click', addWorkshopRow);
+
+            function addWorkshopRow() {
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors workshop-row';
+                
+                tr.innerHTML = `
+                    <td class="px-3 py-3"><input type="text" placeholder="輸入名稱" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm outline-none focus:border-indigo-400"></td>
+                    <td class="px-3 py-3"><input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-indigo-400 ws-mat-cost"></td>
+                    <td class="px-3 py-3"><input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-indigo-400 ws-students"></td>
+                    <td class="px-3 py-3"><input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-indigo-400 ws-class-count"></td>
+                    <td class="px-3 py-3"><input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-indigo-400 ws-tut-cost"></td>
+                    <td class="px-3 py-3"><input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-indigo-400 ws-fee"></td>
+                    
+                    <td class="px-3 py-3 text-center font-medium text-slate-800 bg-indigo-50/50 ws-total-cost" data-value="0">$0</td>
+                    <td class="px-3 py-3 text-center font-medium text-slate-800 ws-revenue" data-value="0">$0</td>
+                    <td class="px-3 py-3 text-center font-bold ws-profit">$0</td>
+                    <td class="px-3 py-3 text-center font-bold ws-profit-pct">0%</td>
+                    
+                    <td class="px-3 py-3 text-center">
+                        <button type="button" class="text-slate-400 hover:text-rose-500 transition ws-delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+
+                workshopTableBody.appendChild(tr);
+                bindWorkshopRowEvents(tr);
+            }
+
+            function bindWorkshopRowEvents(row) {
+                const inputs = row.querySelectorAll('input[type="number"]');
+                const costCell = row.querySelector('.ws-total-cost');
+                const revCell = row.querySelector('.ws-revenue');
+                const profitCell = row.querySelector('.ws-profit');
+                const profitPctCell = row.querySelector('.ws-profit-pct');
+                const deleteBtn = row.querySelector('.ws-delete');
+
+                inputs.forEach(input => input.addEventListener('input', calculateWorkshopRow));
+
+                deleteBtn.addEventListener('click', () => {
+                    row.remove();
+                    updateSummary();
+                });
+
+                function calculateWorkshopRow() {
+                    const matCost = parseFloat(inputs[0].value) || 0;
+                    const students = parseFloat(inputs[1].value) || 0;
+                    const classes = parseFloat(inputs[2].value) || 0;
+                    const tutCost = parseFloat(inputs[3].value) || 0;
+                    const fee = parseFloat(inputs[4].value) || 0;
+
+                    // 總成本 = (教材成本(每人) * 班別人數 * 班別數量) + (導師成本(每班) * 班別數量)
+                    const totalMaterialCost = matCost * students * classes;
+                    const totalTutorCost = tutCost * classes;
+                    const totalCost = totalMaterialCost + totalTutorCost;
+
+                    // Revenue = 每班收費 * 班別數量
+                    const revenue = fee * classes;
+                    
+                    const profit = revenue - totalCost;
+                    const profitPct = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+                    // Update UI
+                    costCell.dataset.value = totalCost;
+                    costCell.textContent = `$${formatCurrency(totalCost)}`;
+                    
+                    revCell.dataset.value = revenue;
+                    revCell.textContent = `$${formatCurrency(revenue)}`;
+
+                    profitCell.textContent = `$${formatCurrency(profit)}`;
+                    profitCell.className = `px-3 py-3 text-center font-bold ${profit > 0 ? 'text-emerald-600' : (profit < 0 ? 'text-rose-600' : 'text-slate-600')}`;
+
+                    profitPctCell.textContent = `${profitPct.toFixed(1)}%`;
+                    profitPctCell.className = `px-3 py-3 text-center font-bold ${profit > 0 ? 'text-emerald-600' : (profit < 0 ? 'text-rose-600' : 'text-slate-600')}`;
+
+                    updateSummary();
+                }
+            }
+
+            // 攤位
+            const boothInputs = ['boothFee', 'boothCount', 'boothTutorCost', 'boothMaterialCost'].map(id => document.getElementById(id));
+            const boothRevenueDisplay = document.getElementById('boothRevenueDisplay');
+            const boothCostDisplay = document.getElementById('boothCostDisplay');
+            const boothProfitDisplay = document.getElementById('boothProfitDisplay');
+            const boothProfitPctDisplay = document.getElementById('boothProfitPctDisplay');
+
+            boothInputs.forEach(input => input.addEventListener('input', () => {
+                calculateBooth();
+                updateSummary();
+            }));
+
+            function calculateBooth() {
+                const fee = parseFloat(boothInputs[0].value) || 0;
+                const count = parseFloat(boothInputs[1].value) || 0;
+                const tutCost = parseFloat(boothInputs[2].value) || 0;
+                const matCost = parseFloat(boothInputs[3].value) || 0;
+
+                const revenue = fee * count;
+                const totalCost = (tutCost * count) + matCost;
+                const profit = revenue - totalCost;
+                const profitPct = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+                boothRevenueDisplay.dataset.value = revenue;
+                boothRevenueDisplay.textContent = `$${formatCurrency(revenue)}`;
+                boothCostDisplay.textContent = `$${formatCurrency(totalCost)}`;
+                
+                boothProfitDisplay.textContent = `$${formatCurrency(profit)}`;
+                boothProfitDisplay.className = `text-xl font-bold ${profit > 0 ? 'text-emerald-600' : (profit < 0 ? 'text-rose-600' : 'text-slate-600')}`;
+
+                boothProfitPctDisplay.textContent = `${profitPct.toFixed(1)}%`;
+                boothProfitPctDisplay.className = `text-xl font-bold ${profit > 0 ? 'text-emerald-600' : (profit < 0 ? 'text-rose-600' : 'text-slate-600')}`;
+            }
+
+            // ==================== 4. Product 收費邏輯 ====================
+            const productInputs = ['productPrice', 'productQty', 'productCost'].map(id => document.getElementById(id));
+            const productTableContainer = document.getElementById('productTableContainer');
+            const productTableBody = document.getElementById('productTableBody');
+
+            productInputs.forEach(input => input.addEventListener('input', () => {
+                calculateProductTable();
+                
+                if (input.id === 'productQty') {
+                    const newQty = parseInt(input.value) || 0;
+                    document.querySelectorAll('.material-row').forEach(row => {
+                        const nameInput = row.querySelector('input[type="text"]');
+                        const qtyInput = row.querySelector('.mat-qty');
+                        if (nameInput && nameInput.value === '' && qtyInput && newQty > 0) {
+                            qtyInput.value = newQty;
+                            qtyInput.dispatchEvent(new Event('input'));
+                        }
+                    });
+                }
+                
+                updateSummary();
+            }));
+
+            function calculateProductTable() {
+                const basePrice = parseFloat(productInputs[0].value);
+                const qty = parseInt(productInputs[1].value);
+                const unitCost = parseFloat(productInputs[2].value);
+
+                if (isNaN(basePrice) || isNaN(qty) || isNaN(unitCost)) {
+                    productTableContainer.classList.add('hidden');
+                    return;
+                }
+
+                productTableContainer.classList.remove('hidden');
+                productTableBody.innerHTML = '';
+
+                for (let i = -5; i <= 5; i++) {
+                    const currentPrice = basePrice + (i * 20);
+                    if (currentPrice <= 0 && currentPrice !== basePrice) continue;
+
+                    const totalCost = unitCost * qty;
+                    const revenue = currentPrice * qty;
+                    const profit = revenue - totalCost;
+                    const profitPercentage = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+                    let profitColor = profit > 0 ? 'text-emerald-600 font-medium' : (profit < 0 ? 'text-rose-600 font-medium' : 'text-slate-600');
+                    const isBaseRow = (i === 0);
+                    const rowClass = isBaseRow ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200 font-bold text-blue-900' : 'bg-white hover:bg-slate-50 text-slate-600';
+
+                    productTableBody.insertAdjacentHTML('beforeend', `
+                        <tr class="${rowClass}">
+                            <td class="px-6 py-3 text-center">$${formatCurrency(currentPrice)}</td>
+                            <td class="px-6 py-3 text-center">$${formatCurrency(unitCost)}</td>
+                            <td class="px-6 py-3 text-center">${qty}</td>
+                            <td class="px-6 py-3 text-center">$${formatCurrency(totalCost)}</td>
+                            <td class="px-6 py-3 text-center font-medium">$${formatCurrency(revenue)}</td>
+                            <td class="px-6 py-3 text-center ${profitColor}">$${formatCurrency(profit)}</td>
+                            <td class="px-6 py-3 text-center ${profitColor}">${profitPercentage.toFixed(1)}%</td>
+                        </tr>
+                    `);
+                }
+            }
+
+            // ==================== 5. 材料表單邏輯 ====================
+            const materialTableBody = document.getElementById('materialTableBody');
+            const addMaterialBtn = document.getElementById('addMaterialBtn');
+            const materialTotalDisplay = document.getElementById('materialTotalDisplay');
+
+            addMaterialBtn.addEventListener('click', addMaterialRow);
+
+            function addMaterialRow() {
+                let defaultQty = 1;
+                if (feeTypeSelect.value === 'person') {
+                    const minSt = parseInt(document.getElementById('minStudents').value);
+                    defaultQty = (!isNaN(minSt) && minSt > 0) ? minSt : 8;
+                } else if (feeTypeSelect.value === 'product') {
+                    const pQty = parseInt(document.getElementById('productQty').value);
+                    defaultQty = (!isNaN(pQty) && pQty > 0) ? pQty : 10;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors material-row';
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-3">
+                        <input type="text" placeholder="輸入項目名稱" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm outline-none focus:border-amber-400">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" value="${defaultQty}" min="1" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-amber-400 mat-qty">
+                    </td>
+                    <td class="px-4 py-3">
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm outline-none focus:border-amber-400 mat-currency">
+                            <option value="hkd">HKD</option>
+                            <option value="rmb">RMB</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" placeholder="-" disabled class="w-full bg-slate-100 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-amber-400 disabled:opacity-50 mat-rmb">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" value="1.15" step="0.01" disabled class="w-full bg-slate-100 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-amber-400 disabled:opacity-50 mat-rate">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm text-center outline-none focus:border-amber-400 mat-hkd">
+                    </td>
+                    <td class="px-4 py-3 text-center font-medium text-amber-700 bg-amber-50/50 mat-subtotal" data-value="0">
+                        $0
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <button type="button" class="text-slate-400 hover:text-rose-500 transition mat-delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+
+                materialTableBody.appendChild(tr);
+                bindMaterialRowEvents(tr);
+                calculateMaterialTotal();
+            }
+
+            function bindMaterialRowEvents(row) {
+                const qtyInput = row.querySelector('.mat-qty');
+                const currencySelect = row.querySelector('.mat-currency');
+                const rmbInput = row.querySelector('.mat-rmb');
+                const rateInput = row.querySelector('.mat-rate');
+                const hkdInput = row.querySelector('.mat-hkd');
+                const subtotalCell = row.querySelector('.mat-subtotal');
+                const deleteBtn = row.querySelector('.mat-delete');
+
+                currencySelect.addEventListener('change', () => {
+                    const isRMB = currencySelect.value === 'rmb';
+                    if (!isRMB) {
+                        rmbInput.disabled = true;
+                        rateInput.disabled = true;
+                        rmbInput.classList.add('bg-slate-100', 'disabled:opacity-50');
+                        rateInput.classList.add('bg-slate-100', 'disabled:opacity-50');
+                        hkdInput.readOnly = false;
+                        hkdInput.classList.remove('bg-amber-50');
+                        rmbInput.value = '';
+                    } else {
+                        rmbInput.disabled = false;
+                        rateInput.disabled = false;
+                        rmbInput.classList.remove('bg-slate-100', 'disabled:opacity-50');
+                        rateInput.classList.remove('bg-slate-100', 'disabled:opacity-50');
+                        hkdInput.readOnly = true;
+                        hkdInput.classList.add('bg-amber-50'); 
+                        if(!rateInput.value) rateInput.value = '1.15';
+                    }
+                    calculateRow();
+                });
+
+                [qtyInput, rmbInput, rateInput, hkdInput].forEach(input => {
+                    input.addEventListener('input', calculateRow);
+                });
+
+                deleteBtn.addEventListener('click', () => {
+                    row.remove();
+                    calculateMaterialTotal();
+                });
+
+                function calculateRow() {
+                    let qty = parseFloat(qtyInput.value) || 0;
+                    const isRMB = currencySelect.value === 'rmb';
+                    let unitHKD = 0;
+
+                    if (isRMB) {
+                        const rmb = parseFloat(rmbInput.value) || 0;
+                        const rate = parseFloat(rateInput.value) || 1.15;
+                        unitHKD = rmb * rate;
+                        hkdInput.value = unitHKD.toFixed(1);
+                    } else {
+                        unitHKD = parseFloat(hkdInput.value) || 0;
+                    }
+
+                    const subtotal = qty * unitHKD;
+                    subtotalCell.dataset.value = subtotal;
+                    subtotalCell.textContent = `$${formatCurrency(subtotal)}`;
+                    
+                    calculateMaterialTotal();
+                }
+            }
+
+            function calculateMaterialTotal() {
+                const subtotalCells = document.querySelectorAll('.mat-subtotal');
+                let total = 0;
+                subtotalCells.forEach(cell => {
+                    total += parseFloat(cell.dataset.value) || 0;
+                });
+
+                materialTotalDisplay.dataset.value = total;
+                materialTotalDisplay.textContent = `$${formatCurrency(total)}`;
+                
+                updateSummary();
+            }
+
+            // ==================== 6. 總結 (Summary) 邏輯 ====================
+            const summaryCourseFee = document.getElementById('summaryCourseFee');
+            const summaryMaterialFee = document.getElementById('summaryMaterialFee');
+            const summaryTotalFee = document.getElementById('summaryTotalFee');
+
+            function updateSummary() {
+                let mainFee = 0;
+
+                if (feeTypeSelect.value === 'session') {
+                    const fee = parseFloat(sessionInputs[0].value) || 0;
+                    const count = parseFloat(sessionInputs[1].value) || 0;
+                    mainFee = fee * count;
+                } else if (feeTypeSelect.value === 'person') {
+                    const fee = parseFloat(personInputs[0].value) || 0;
+                    const count = parseFloat(personInputs[1].value) || 0;
+                    const minSt = parseInt(personInputs[3].value) || 8;
+                    mainFee = fee * count * minSt;
+                } else if (feeTypeSelect.value === 'product') {
+                    const price = parseFloat(productInputs[0].value) || 0;
+                    const qty = parseInt(productInputs[1].value) || 0;
+                    mainFee = price * qty;
+                } else if (feeTypeSelect.value === 'activity') {
+                    // 活動日的營收：所有「工作坊」的 Revenue 加總 + 「攤位」的 Revenue
+                    let workshopRevenue = 0;
+                    document.querySelectorAll('.workshop-row').forEach(row => {
+                        workshopRevenue += parseFloat(row.querySelector('.ws-revenue').dataset.value) || 0;
+                    });
+                    const boothRevenue = parseFloat(document.getElementById('boothRevenueDisplay').dataset.value) || 0;
+                    mainFee = workshopRevenue + boothRevenue;
+                }
+
+                // 取得底部材料表單的總收費
+                let materialFee = 0;
+                if (['session', 'person', 'activity', 'product'].includes(feeTypeSelect.value)) {
+                    materialFee = parseFloat(materialTotalDisplay.dataset.value) || 0;
+                }
+
+                const totalFee = mainFee + materialFee;
+
+                summaryCourseFee.textContent = `$${formatCurrency(mainFee)}`;
+                summaryMaterialFee.textContent = `$${formatCurrency(materialFee)}`;
+                summaryTotalFee.textContent = `$${formatCurrency(totalFee)}`;
+            }
+
+            // 初始化設定
+            addWorkshopRow(); // 加入第一行工作坊
+            addMaterialRow(); // 加入第一行材料
+            updateSummary();
+
+        });
+    </script>
+</body>
+</html>
