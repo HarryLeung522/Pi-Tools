@@ -17,16 +17,13 @@
 </head>
 <body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 text-slate-800">
 
-    <!-- 主應用程式卡片 -->
     <div class="glass-panel w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col relative">
-
         <div class="p-8">
             <div class="text-center mb-8">
                 <h1 class="text-2xl font-bold text-slate-800 tracking-tight">🍅 番茄鐘紀錄</h1>
                 <p class="text-sm text-slate-500 mt-1">保持專注，自動記錄你的努力</p>
             </div>
 
-            <!-- 任務表單 -->
             <div class="space-y-4 mb-8">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">使用者</label>
@@ -47,7 +44,6 @@
                 </div>
             </div>
 
-            <!-- 計時器顯示 -->
             <div class="flex justify-center mb-8">
                 <div class="relative flex items-center justify-center w-48 h-48 bg-slate-50 rounded-full shadow-inner border-[6px] border-slate-100">
                     <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -58,7 +54,6 @@
                 </div>
             </div>
 
-            <!-- 控制按鈕 -->
             <div class="flex justify-center gap-4">
                 <button id="startBtn" onclick="startTimer()" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-red-500/20 transition-all active:scale-95">
                     開始專注
@@ -70,7 +65,6 @@
         </div>
     </div>
 
-    <!-- 實際工作內容詢問彈窗 (預設隱藏) -->
     <div id="completionModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50 opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 transform scale-95 transition-transform duration-300" id="modalContent">
             <div class="text-center mb-6">
@@ -93,7 +87,6 @@
         </div>
     </div>
 
-    <!-- 吐司提示 (Toast) -->
     <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg transition-all duration-300 translate-y-20 opacity-0 flex items-center gap-2 z-50">
         <span id="toastIcon">✅</span>
         <span id="toastMsg" class="text-sm font-medium">提示訊息</span>
@@ -101,12 +94,11 @@
 
     <script>
         // ==========================================
-        // ⚠️ 請在此填入你部署好的 Google Apps Script 網址
+        // API 網址設定
         // ==========================================
         const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxTIa2FHJkomxoAOGw2_-bzB3osJH1gpTindZGu8gNQf6IWi0Urm3CCOl66Mvn0wQAu/exec";
 
         // --- 狀態變數 ---
-        let timer;
         let totalSeconds = 26 * 60;
         let remainingSeconds = totalSeconds;
         let isRunning = false;
@@ -117,7 +109,39 @@
             date: ''
         };
 
-        const CIRCLE_CIRCUMFERENCE = 289; // 2 * pi * r (r=46)
+        const CIRCLE_CIRCUMFERENCE = 289;
+
+        // ==========================================
+        // Web Worker 核心補丁 (解決背景分頁休眠問題)
+        // ==========================================
+        const workerBlob = new Blob([`
+            let timer = null;
+            self.onmessage = function(e) {
+                if (e.data === 'start') {
+                    if (timer) clearInterval(timer);
+                    timer = setInterval(() => {
+                        self.postMessage('tick');
+                    }, 1000);
+                } else if (e.data === 'stop') {
+                    clearInterval(timer);
+                    timer = null;
+                }
+            };
+        `], { type: 'application/javascript' });
+        
+        const timerWorker = new Worker(URL.createObjectURL(workerBlob));
+
+        // 接收 Worker 傳來的每秒跳動信號
+        timerWorker.onmessage = function(e) {
+            if (e.data === 'tick') {
+                remainingSeconds--;
+                updateDisplay();
+
+                if (remainingSeconds <= 0) {
+                    completeTimer();
+                }
+            }
+        };
 
         // --- 初始化 ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -132,17 +156,16 @@
             updateDisplay();
         });
 
-        // --- 音效邏輯 (Web Audio API) ---
+        // --- 音效邏輯 (Web Audio API) 響三次 ---
         function playChime() {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
             const ctx = new AudioContext();
             
-            // 響三次迴圈
             for (let i = 0; i < 3; i++) {
-                const offset = i * 1.2; // 每次音效間隔 1.2 秒
+                const offset = i * 1.2; // 每次間隔 1.2 秒
                 
-                // 第一聲 (A5 音高)
+                // 第一聲 (A5)
                 const osc1 = ctx.createOscillator();
                 const gain1 = ctx.createGain();
                 osc1.connect(gain1);
@@ -155,7 +178,7 @@
                 osc1.start(ctx.currentTime + offset);
                 osc1.stop(ctx.currentTime + offset + 0.5);
 
-                // 第二聲 (C6 音高，稍微延遲)
+                // 第二聲 (C6)
                 const osc2 = ctx.createOscillator();
                 const gain2 = ctx.createGain();
                 osc2.connect(gain2);
@@ -179,11 +202,6 @@
                 return;
             }
 
-            if (WEBAPP_URL === "請在此填入你的_GOOGLE_APPS_SCRIPT_網址" || !WEBAPP_URL) {
-                showToast('請先在程式碼中填寫 Google Apps Script 網址！', '⚙️');
-                return;
-            }
-
             // 記錄開始時間與日期
             const now = new Date();
             sessionData.date = formatDate(now);
@@ -197,24 +215,18 @@
             document.getElementById('startBtn').classList.add('hidden');
             document.getElementById('cancelBtn').classList.remove('hidden');
             
-            timer = setInterval(() => {
-                remainingSeconds--;
-                updateDisplay();
-
-                if (remainingSeconds <= 0) {
-                    completeTimer();
-                }
-            }, 1000);
+            // 啟動 Web Worker 計時
+            timerWorker.postMessage('start');
         }
 
         function cancelTimer() {
-            clearInterval(timer);
+            timerWorker.postMessage('stop');
             resetUI();
             showToast('已放棄本次番茄鐘', '🛑');
         }
 
         function completeTimer() {
-            clearInterval(timer);
+            timerWorker.postMessage('stop');
             
             // 播放提示音
             playChime();
@@ -229,7 +241,6 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             
-            // 小動畫
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
                 modalContent.classList.remove('scale-95');
@@ -283,7 +294,6 @@
             const user = document.getElementById('userSelect').value;
             const plannedWork = document.getElementById('plannedWork').value;
             
-            // 計算今日累積番茄鐘
             const storageKey = `pomodoro_${user}_${sessionData.date}`;
             let accumulated = parseInt(localStorage.getItem(storageKey) || '0');
             accumulated += 1;
@@ -310,7 +320,6 @@
                 const result = await response.json();
                 
                 if(result.result === 'success') {
-                    // 成功才真正寫入 LocalStorage
                     localStorage.setItem(storageKey, accumulated.toString());
                     closeModal();
                     resetUI();
@@ -320,7 +329,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                showToast('上傳失敗，請檢查網路或設定檔！', '❌');
+                showToast('上傳失敗，請檢查網路！', '❌');
             } finally {
                 btn.disabled = false;
                 spinner.classList.add('hidden');
@@ -341,7 +350,7 @@
             }, 300);
         }
 
-        // --- 設定與工具函數 ---
+        // --- 工具函數 ---
         function formatDate(date) {
             const yyyy = date.getFullYear();
             const mm = String(date.getMonth() + 1).padStart(2, '0');
