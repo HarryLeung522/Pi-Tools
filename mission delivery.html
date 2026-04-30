@@ -56,17 +56,25 @@
       <button type="submit" id="submitBtn">傳送任務</button>
       <div id="loader" class="loader">處理中，請稍候...</div>
       <div id="successMsg" style="display:none; color: #27ae60; text-align: center; margin-top:15px; font-weight: bold;">✅ 任務發送成功！</div>
+      <div id="errMsg" style="display:none; color: #c0392b; text-align: center; margin-top:15px; font-weight: bold;">❌ 發生錯誤，請重試。</div>
     </form>
   </div>
 
   <script>
-    const GAS_API_URL = "您的最新部署網址"; 
+    // ⚠️ 記得把這裡替換成您最新的 Web App URL 喔！
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPZg2063z-x_UCCQMHRGC6rv52tee1D0TM-2orLnx_026r625hpqImoP18PKircWSWNg/exec"; 
 
     document.getElementById("taskForm").addEventListener("submit", async function(e) {
       e.preventDefault();
       const btn = document.getElementById("submitBtn");
       const loader = document.getElementById("loader");
-      btn.disabled = true; loader.style.display = "block";
+      const successMsg = document.getElementById("successMsg");
+      const errMsg = document.getElementById("errMsg");
+
+      btn.disabled = true; 
+      loader.style.display = "block";
+      successMsg.style.display = "none";
+      errMsg.style.display = "none";
 
       const payload = {
         action: "githubFormSubmit",
@@ -88,26 +96,56 @@
 
       const fileInput = document.getElementById("fileUpload");
       if (fileInput.files.length > 0) {
-        for (let file of fileInput.files) {
-          const base64 = await new Promise(r => {
-            const reader = new FileReader();
-            reader.onload = () => r(reader.result.split(',')[1]);
-            reader.readAsDataURL(file);
+        loader.innerText = `正在讀取 ${fileInput.files.length} 個檔案...`;
+        try {
+          const filePromises = Array.from(fileInput.files).map(file => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve({
+                base64: reader.result.split(',')[1],
+                name: file.name,
+                type: file.type || "application/octet-stream"
+              });
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
           });
-          payload.files.push({ base64, name: file.name, type: file.type });
+          payload.files = await Promise.all(filePromises);
+        } catch (error) {
+          loader.style.display = "none";
+          errMsg.style.display = "block";
+          errMsg.innerText = "❌ 檔案讀取失敗";
+          btn.disabled = false;
+          return; // 檔案讀取失敗就提早結束
         }
       }
 
-      fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
-        .then(res => res.json())
-        .then(res => {
-          if(res.status === "success") {
-            document.getElementById("successMsg").style.display = "block";
-            document.getElementById("taskForm").reset();
-            document.getElementById("project").value = "NO";
-          } else { alert("❌ 錯誤：" + res.message); }
-        })
-        .finally(() => { btn.disabled = false; loader.style.display = "none"; });
+      loader.innerText = "資料上傳中...";
+
+      // 加入了 Header 防 CORS，並加入了 catch 捕捉錯誤
+      fetch(GAS_API_URL, { 
+        method: "POST", 
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+        body: JSON.stringify(payload) 
+      })
+      .then(res => res.json())
+      .then(res => {
+        if(res.status === "success") {
+          successMsg.style.display = "block";
+          document.getElementById("taskForm").reset();
+          document.getElementById("project").value = "NO";
+        } else { 
+          throw new Error(res.message); 
+        }
+      })
+      .catch(error => {
+        errMsg.style.display = "block";
+        errMsg.innerText = "❌ 系統錯誤：" + error.message;
+      })
+      .finally(() => { 
+        btn.disabled = false; 
+        loader.style.display = "none"; 
+      });
     });
   </script>
 </body>
