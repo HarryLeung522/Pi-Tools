@@ -11,16 +11,15 @@
     .row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
     .col { flex: 1; min-width: 140px; }
     label { font-weight: 600; display: block; margin-bottom: 5px; font-size: 14px; color: #444; }
-    input[type="text"], input[type="date"], select, input[type="file"], textarea { 
+    input[type="text"], input[type="date"], input[type="number"], select, input[type="file"], textarea { 
       width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 14px;
     }
     textarea { resize: vertical; min-height: 80px; font-family: inherit; }
-    .checkbox-container { display: flex; align-items: center; margin-top: 20px; margin-bottom: 20px; background: #e8f8f5; padding: 10px; border-radius: 5px; border: 1px solid #d1f2eb;}
+    .checkbox-container { display: flex; align-items: center; margin: 20px 0; background: #e8f8f5; padding: 10px; border-radius: 5px; border: 1px solid #d1f2eb;}
     .checkbox-container input { margin-right: 10px; width: 20px; height: 20px; }
-    .checkbox-container label { margin-bottom: 0; font-size: 15px; color: #0e6655; cursor: pointer;}
     button { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;}
     button:hover { background-color: #2980b9; }
-    button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+    button:disabled { background-color: #95a5a6; }
     .loader { display: none; text-align: center; margin-top: 15px; font-weight: bold; color: #3498db; }
   </style>
 </head>
@@ -29,61 +28,45 @@
     <h2>Pi任務發起區</h2>
     <form id="taskForm">
       <div class="row">
-        <div class="col"><label>任務發起人</label><select id="initiator"><option value="Harry" selected>Harry</option><option value="Zoe">Zoe</option><option value="Ian">Ian</option><option value="Chris">Chris</option></select></div>
-        <div class="col"><label>PIC</label><select id="pic"><option value="Harry" selected>Harry</option><option value="Zoe">Zoe</option><option value="Ian">Ian</option><option value="Chris">Chris</option></select></div>
-        <div class="col"><label>Aspect</label><select id="aspect"><option value="Accounting">Accounting</option><option value="Admin">Admin</option><option value="Human Resources">Human Resources</option><option value="Project Management" selected>Project Management</option><option value="Research & Development">Research & Development</option><option value="Sales & Marketing">Sales & Marketing</option></select></div>
+        <div class="col"><label>任務發起人</label><select id="initiator"><option>Harry</option><option>Zoe</option><option>Ian</option><option>Chris</option></select></div>
+        <div class="col"><label>PIC</label><select id="pic"><option>Harry</option><option>Zoe</option><option>Ian</option><option>Chris</option></select></div>
       </div>
-      <div class="row"><div class="col"><label>Project</label><input type="text" id="project" value="NO"></div></div>
-      <div class="row"><div class="col"><label>Task <span style="color:red;">*</span></label><input type="text" id="task" required placeholder="請輸入任務名稱..."></div></div>
+      <div class="row">
+        <div class="col"><label>Aspect</label><select id="aspect"><option selected>Project Management</option><option>Accounting</option><option>Admin</option><option>Human Resources</option><option>Research & Development</option><option>Sales & Marketing</option></select></div>
+        <div class="col"><label>Project</label><input type="text" id="project" value="NO"></div>
+      </div>
+      <div class="row"><div class="col"><label>Task <span style="color:red;">*</span></label><input type="text" id="task" required></div></div>
+      <div class="row">
+        <div class="col"><label>Important</label><select id="important"><option>NO</option><option>YES</option></select></div>
+        <div class="col"><label>Urgent</label><select id="urgent"><option>NO</option><option>YES</option></select></div>
+      </div>
       
       <div class="row">
-        <div class="col"><label>Important</label><select id="important"><option value="YES">YES</option><option value="NO" selected>NO</option></select></div>
-        <div class="col"><label>Urgent</label><select id="urgent"><option value="YES">YES</option><option value="NO" selected>NO</option></select></div>
-      </div>
-
-      <div class="row">
-        <div class="col"><label>Deadline (截止日期)</label><input type="date" id="deadline"></div>
+        <div class="col"><label>截止日期 (Deadline)</label><input type="date" id="deadline"></div>
+        <div class="col"><label>預期時數 (Expected Hour)</label><input type="number" id="expectedHour" step="0.5" placeholder="例如: 2.5"></div>
       </div>
 
       <div class="row"><div class="col"><label>Background</label><textarea id="background">-</textarea></div></div>
       <div class="row"><div class="col"><label>Description</label><textarea id="description">-</textarea></div></div>
       <div class="row"><div class="col"><label>Key output</label><textarea id="keyOutput">-</textarea></div></div>
-      <div class="row"><div class="col"><label>上傳相片或檔案 (多選)</label><input type="file" id="fileUpload" multiple></div></div>
+      <div class="row"><div class="col"><label>上傳相片 (多選)</label><input type="file" id="fileUpload" multiple></div></div>
       
-      <div class="checkbox-container"><input type="checkbox" id="exportDoc"><label for="exportDoc">同時匯出獨立任務 PDF</label></div>
+      <div class="checkbox-container"><input type="checkbox" id="exportDoc"> <label for="exportDoc">同時匯出獨立任務 PDF</label></div>
 
       <button type="submit" id="submitBtn">傳送任務</button>
       <div id="loader" class="loader">處理中，請稍候...</div>
       <div id="successMsg" style="display:none; color: #27ae60; text-align: center; margin-top:15px; font-weight: bold;">✅ 任務發送成功！</div>
-      <div id="errMsg" style="display:none; color: #c0392b; text-align: center; margin-top:15px; font-weight: bold;">❌ 發生錯誤，請重試。</div>
     </form>
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPZg2063z-x_UCCQMHRGC6rv52tee1D0TM-2orLnx_026r625hpqImoP18PKircWSWNg/exec"; 
-
-    // 初始化日期：設定預設為今天的一星期之後
-    window.onload = function() {
-      const deadlineInput = document.getElementById('deadline');
-      const today = new Date();
-      today.setDate(today.getDate() + 7);
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      deadlineInput.value = `${year}-${month}-${day}`;
-    };
+    const GAS_API_URL = "您的最新部署網址"; 
 
     document.getElementById("taskForm").addEventListener("submit", async function(e) {
       e.preventDefault();
       const btn = document.getElementById("submitBtn");
       const loader = document.getElementById("loader");
-      const successMsg = document.getElementById("successMsg");
-      const errMsg = document.getElementById("errMsg");
-
-      btn.disabled = true;
-      loader.style.display = "block";
-      successMsg.style.display = "none";
-      errMsg.style.display = "none";
+      btn.disabled = true; loader.style.display = "block";
 
       const payload = {
         action: "githubFormSubmit",
@@ -94,7 +77,8 @@
         task: document.getElementById("task").value,
         important: document.getElementById("important").value,
         urgent: document.getElementById("urgent").value,
-        deadline: document.getElementById("deadline").value, // 傳送日期字串 (YYYY-MM-DD)
+        deadline: document.getElementById("deadline").value,
+        expectedHour: document.getElementById("expectedHour").value,
         background: document.getElementById("background").value,
         description: document.getElementById("description").value,
         keyOutput: document.getElementById("keyOutput").value,
@@ -104,55 +88,26 @@
 
       const fileInput = document.getElementById("fileUpload");
       if (fileInput.files.length > 0) {
-        const filePromises = Array.from(fileInput.files).map(file => {
-          return new Promise((resolve, reject) => {
+        for (let file of fileInput.files) {
+          const base64 = await new Promise(r => {
             const reader = new FileReader();
-            reader.onload = (event) => resolve({
-              base64: event.target.result.split(',')[1],
-              name: file.name,
-              type: file.type || "application/octet-stream"
-            });
-            reader.onerror = reject;
+            reader.onload = () => r(reader.result.split(',')[1]);
             reader.readAsDataURL(file);
           });
-        });
-        try {
-          payload.files = await Promise.all(filePromises);
-          sendDataToGAS(payload);
-        } catch (error) {
-          loader.style.display = "none";
-          errMsg.style.display = "block";
-          errMsg.innerText = "❌ 檔案讀取失敗";
-          btn.disabled = false;
+          payload.files.push({ base64, name: file.name, type: file.type });
         }
-      } else {
-        sendDataToGAS(payload);
       }
 
-      function sendDataToGAS(data) {
-        fetch(GAS_API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(result => {
-          if(result.status === "success") {
-            loader.style.display = "none";
-            successMsg.style.display = "block";
+      fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
+        .then(res => res.json())
+        .then(res => {
+          if(res.status === "success") {
+            document.getElementById("successMsg").style.display = "block";
             document.getElementById("taskForm").reset();
             document.getElementById("project").value = "NO";
-            // 重設日期為一星期後
-            window.onload(); 
-          } else { throw new Error(result.message); }
+          } else { alert("❌ 錯誤：" + res.message); }
         })
-        .catch(error => {
-          loader.style.display = "none";
-          errMsg.style.display = "block";
-          errMsg.innerText = "❌ 發送失敗：" + error.message;
-        })
-        .finally(() => { btn.disabled = false; });
-      }
+        .finally(() => { btn.disabled = false; loader.style.display = "none"; });
     });
   </script>
 </body>
