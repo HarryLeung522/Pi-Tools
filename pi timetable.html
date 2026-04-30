@@ -55,10 +55,16 @@
         .fc-event {
             cursor: pointer;
             border: none;
-            background-color: #ffffff !important;
+            background-color: transparent !important;
             color: #333 !important;
-            padding: 2px 5px;
+            padding: 0;
             margin-bottom: 2px;
+            border-radius: 4px;
+        }
+        
+        .normal-event-box {
+            background-color: #ffffff;
+            padding: 2px 5px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             border-radius: 4px;
         }
@@ -248,6 +254,16 @@
 
         const PRIORITY_TUTORS = ['Harry', 'Zoe', 'Chris', 'Ian'];
 
+        // 香港公眾假期 2026-2028 資料
+        const HK_HOLIDAYS = [
+            // 2026
+            { date: '2026-01-01', title: '元旦' }, { date: '2026-02-17', title: '農曆年初一' }, { date: '2026-02-18', title: '農曆年初二' }, { date: '2026-02-19', title: '農曆年初三' }, { date: '2026-04-03', title: '耶穌受難節' }, { date: '2026-04-04', title: '耶穌受難節翌日' }, { date: '2026-04-06', title: '清明節翌日' }, { date: '2026-04-07', title: '復活節星期一翌日' }, { date: '2026-05-01', title: '勞動節' }, { date: '2026-05-25', title: '佛誕翌日' }, { date: '2026-06-19', title: '端午節' }, { date: '2026-07-01', title: '特區成立紀念日' }, { date: '2026-09-26', title: '中秋節翌日' }, { date: '2026-10-01', title: '國慶日' }, { date: '2026-10-19', title: '重陽節翌日' }, { date: '2026-12-25', title: '聖誕節' }, { date: '2026-12-26', title: '聖誕節翌日' },
+            // 2027
+            { date: '2027-01-01', title: '元旦' }, { date: '2027-02-06', title: '農曆年初一' }, { date: '2027-02-08', title: '農曆年初三' }, { date: '2027-02-09', title: '農曆年初四' }, { date: '2027-03-26', title: '耶穌受難節' }, { date: '2027-03-27', title: '耶穌受難節翌日' }, { date: '2027-03-29', title: '復活節星期一' }, { date: '2027-04-05', title: '清明節' }, { date: '2027-05-01', title: '勞動節' }, { date: '2027-05-13', title: '佛誕' }, { date: '2027-06-09', title: '端午節' }, { date: '2027-07-01', title: '特區成立紀念日' }, { date: '2027-09-16', title: '中秋節翌日' }, { date: '2027-10-01', title: '國慶日' }, { date: '2027-10-08', title: '重陽節' }, { date: '2027-12-25', title: '聖誕節' }, { date: '2027-12-27', title: '聖誕節後第二個周日' },
+            // 2028
+            { date: '2028-01-01', title: '元旦' }, { date: '2028-01-26', title: '農曆年初一' }, { date: '2028-01-27', title: '農曆年初二' }, { date: '2028-01-28', title: '農曆年初三' }, { date: '2028-04-04', title: '清明節' }, { date: '2028-04-14', title: '耶穌受難節' }, { date: '2028-04-15', title: '耶穌受難節翌日' }, { date: '2028-04-17', title: '復活節星期一' }, { date: '2028-05-01', title: '勞動節' }, { date: '2028-05-02', title: '佛誕' }, { date: '2028-05-29', title: '端午節' }, { date: '2028-07-01', title: '特區成立紀念日' }, { date: '2028-10-02', title: '國慶日翌日' }, { date: '2028-10-04', title: '中秋節翌日' }, { date: '2028-10-26', title: '重陽節' }, { date: '2028-12-25', title: '聖誕節' }, { date: '2028-12-26', title: '聖誕節翌日' }
+        ];
+
         document.addEventListener('DOMContentLoaded', function() {
             initCalendar();
             fetchData();
@@ -275,10 +291,20 @@
                 dayMaxEventRows: false,
                 eventContent: function(arg) {
                     let p = arg.event.extendedProps;
-                    let colorClass = TUTOR_COLORS[p.tutor] || 'tutor-border-default';
                     
+                    // 如果是假期，套用特殊紅色版型
+                    if (p.isHoliday) {
+                        return {
+                            html: `<div style="background-color: #fce4e4; color: #c0392b; border: 1px solid #e74c3c; padding: 2px 4px; border-radius: 4px; font-size: 0.85em; text-align: center; font-weight: bold; margin: 0 2px;">
+                                    🎌 ${arg.event.title}
+                                   </div>`
+                        };
+                    }
+
+                    // 一般課程版型
+                    let colorClass = TUTOR_COLORS[p.tutor] || 'tutor-border-default';
                     return {
-                        html: `<div class="${colorClass}" style="padding-left: 5px;">
+                        html: `<div class="normal-event-box ${colorClass}" style="padding-left: 5px;">
                                 <div class="event-time">${p.timeStr} <span class="event-tutor">| ${p.tutor}</span></div>
                                 <div class="small text-truncate" style="color:#000">${p.school}</div>
                                </div>`
@@ -298,6 +324,17 @@
                     let schoolSetForDisplay = new Set(); 
                     
                     rawSheetData = []; 
+                    allEvents = []; // 清空事件準備重新載入
+
+                    // 載入假期資料 (sortOrder 設為 -1 讓它永遠排在當天最上面)
+                    HK_HOLIDAYS.forEach(h => {
+                        allEvents.push({
+                            title: h.title,
+                            start: h.date,
+                            isHoliday: true,
+                            sortOrder: -1
+                        });
+                    });
 
                     for (let i = 1; i < rows.length; i++) {
                         let col = rows[i];
@@ -410,6 +447,9 @@
             calendar.removeAllEvents();
             
             let filtered = allEvents.filter(e => {
+                // 如果是假期，永遠顯示！不受導師與課程篩選影響
+                if (e.isHoliday) return true;
+
                 const matchTutor = showAllTutors || selectedTutors.includes(e.tutor);
                 const matchCourse = (c === 'all' || e.course === c);
                 return matchTutor && matchCourse;
@@ -638,7 +678,6 @@
             let sendSummary = {};
             sends.forEach(r => {
                 let m = r.M;
-                // 用 parseFloat 抓取數字，若填寫 "15包" 會抓到 15。若沒填或無法轉換則為 0
                 let num = parseFloat(r.N) || 0;
                 sendSummary[m] = (sendSummary[m] || 0) + num;
             });
