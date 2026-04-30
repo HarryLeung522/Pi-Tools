@@ -292,11 +292,11 @@
                 eventContent: function(arg) {
                     let p = arg.event.extendedProps;
                     
-                    // 如果是假期，套用特殊紅色版型
+                    // 如果是假期，套用特殊紅色版型 (移除了 emoji)
                     if (p.isHoliday) {
                         return {
                             html: `<div style="background-color: #fce4e4; color: #c0392b; border: 1px solid #e74c3c; padding: 2px 4px; border-radius: 4px; font-size: 0.85em; text-align: center; font-weight: bold; margin: 0 2px;">
-                                    🎌 ${arg.event.title}
+                                    ${arg.event.title}
                                    </div>`
                         };
                     }
@@ -324,9 +324,9 @@
                     let schoolSetForDisplay = new Set(); 
                     
                     rawSheetData = []; 
-                    allEvents = []; // 清空事件準備重新載入
+                    allEvents = []; 
 
-                    // 載入假期資料 (sortOrder 設為 -1 讓它永遠排在當天最上面)
+                    // 載入假期資料
                     HK_HOLIDAYS.forEach(h => {
                         allEvents.push({
                             title: h.title,
@@ -447,7 +447,6 @@
             calendar.removeAllEvents();
             
             let filtered = allEvents.filter(e => {
-                // 如果是假期，永遠顯示！不受導師與課程篩選影響
                 if (e.isHoliday) return true;
 
                 const matchTutor = showAllTutors || selectedTutors.includes(e.tutor);
@@ -674,7 +673,6 @@
                 }
             }
 
-            // --- 總結計算邏輯 ---
             let sendSummary = {};
             sends.forEach(r => {
                 let m = r.M;
@@ -689,7 +687,6 @@
                 collectSummary[m] = (collectSummary[m] || 0) + num;
             });
 
-            // --- 渲染總結區塊 ---
             let sendKeys = Object.keys(sendSummary);
             let collectKeys = Object.keys(collectSummary);
 
@@ -713,7 +710,6 @@
                 }
             }
 
-            // --- 渲染列表 ---
             if (sends.length === 0) {
                 sendList.innerHTML = '<div class="list-group-item text-muted">本週無送出教材</div>';
             } else {
