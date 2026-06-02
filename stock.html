@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搵野易</title>
+    <style>
+        :root {
+            --bg-color: #f1ebd8;
+            --wall-color: #000000;
+        }
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #status {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .loading { background-color: #fff3cd; color: #856404; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+
+        /* 版面配置 */
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            width: 100%;
+            max-width: 1100px;
+            align-items: flex-start;
+        }
+
+        /* 搜尋側邊欄 */
+        .sidebar {
+            flex: 1;
+            min-width: 280px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .sidebar h2 { margin-top: 0; font-size: 18px; color: #333; }
+        .sidebar input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .sidebar button:hover { background: #357abd; }
+        
+        .search-results {
+            margin-top: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .result-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+        .result-item:hover { background: #f0f7ff; }
+        .result-loc { font-weight: bold; color: #d9534f; font-size: 13px; margin-bottom: 5px;}
+        .result-name { font-size: 15px; color: #222; }
+
+        /* 地圖區域 */
+        .map-area {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; box-sizing: border-box; }
+            .map-area { width: 100%; }
+        }
+
+        /* Canvas 容器設定 */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* 限制最大寬度，確保在電腦螢幕上不會過大 */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background-color: transparent;
+            margin-bottom: 30px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            cursor: default; /* 預設鼠標，遇到櫃子會透過JS改為 pointer */
+        }
+
+        /* 彈出視窗 (Modal) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .close-btn {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .close-btn:hover { background: #cc0000; }
+        
+        /* 櫃子正面視圖 */
+        .front-view {
+            margin: 0 auto 20px auto;
+            display: inline-block;
+            background: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #ccc;
+        }
+        .top-area {
+            width: 100%;
+            height: 40px;
+            background: #dff0d8;
+            border: 2px dashed #888;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #3c763d;
+            border-radius: 4px;
+        }
+        .grid-container {
+            display: grid;
+            gap: 6px;
+        }
+        .grid-cell {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border: 1px solid #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+        .grid-cell:hover, .top-area:hover {
+            background: #e9ecef;
+            filter: brightness(0.95);
+        }
+        .has-item {
+            background: #cce5ff;
+            border-color: #004085;
+            color: #004085;
+            font-weight: bold;
+        }
+        .has-item:hover {
+            background: #b8daff;
+        }
+
+        /* 物品清單顯示區 */
+        .item-details {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+            border: 1px solid #ddd;
+        }
+        .item-details h3 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 16px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+        }
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .item-list li {
+            padding: 10px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        .item-list li:last-child {
+            border-bottom: none;
+        }
+        .item-category {
+            display: inline-block;
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📦 搵野易</h1>
+    <div id="status" class="loading">正在連線至 Google Sheet 讀取資料...</div>
+
+    <div class="main-container">
+        <!-- 新增：搜尋側邊欄 -->
+        <div class="sidebar">
+            <h2>🔍 搜尋物品</h2>
+            <input type="text" id="searchInput" placeholder="輸入物品名稱或分類..." onkeypress="handleSearchEnter(event)">
+            <button onclick="performSearch()">搜尋</button>
+            <div id="searchResults" class="search-results">
+                <div style="color: #888; text-align: center; padding: 20px 0;">請輸入關鍵字開始搜尋</div>
+            </div>
+        </div>
+
+        <!-- 地圖區域 -->
+        <div class="map-area">
+            <!-- Canvas 地圖容器 -->
+            <div class="canvas-container">
+                <!-- 設定畫布內部解析度為 1000x1500 以確保在高畫質螢幕上的清晰度 (2:3 比例) -->
+                <canvas id="mapCanvas" width="1000" height="1500"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 彈出視窗 -->
+    <div id="modal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="modal-title" style="margin: 0; font-size: 20px;">櫃子名稱</h2>
+                <button class="close-btn" onclick="closeModal(true)">關閉</button>
+            </div>
+            
+            <div id="front-view" class="front-view">
+                <!-- 由 JS 動態生成格子 -->
+            </div>
+
+            <div class="item-details">
+                <h3 id="selected-loc-title">請點擊上方格子查看物品</h3>
+                <ul id="item-list-container" class="item-list">
+                    <!-- 物品列表 -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Google Sheet 設定 ---
+        const sheetId = '1vM3CdRFUOmGWDVOQjA4u-YmcJ65BNEkc5B0Q4sxruLs';
+        const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+
+        let inventoryData = {};
+        let currentOpenCabId = null;
+
+        // --- 2. Canvas 與櫃子資料設定 ---
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        let hoveredCabId = null;
+        let searchHighlightedCabIds = []; // 新增：用於記錄搜尋到的櫃子ID
+
+        // 基準解析度 (與畫布 width/height 對應)
+        const CANVAS_W = 1000;
+        const CANVAS_H = 1500;
+
+        // 櫃子設定：加入 cx, cy, cw, ch 作為在 Canvas 中的位置與尺寸 (基於 1000x1500 解析度)
+        const cabinetsConfig = {
+            7: { id: 7, name: "Ikea 4x4 Kallax Black 2", type: "kallax", w: 4, h: 4, cx: 70, cy: 440, cw: 200, ch: 70, color: "#fcd571" },
+            8: { id: 8, name: "4層大鐵架1", type: "rack", levels: ["頂層", "上層", "中層", "底層"], cx: 70, cy: 530, cw: 300, ch: 70, color: "#e5a485" },
+            9: { id: 9, name: "4層大鐵架2", type: "rack", levels: ["頂層", "上層", "中層", "底層"], cx: 70, cy: 680, cw: 300, ch: 70, color: "#e5a485" },
+            10:{ id: 10, name: "4層大鐵架1(或3)", type: "rack", levels: ["頂層", "上層", "中層", "底層"], cx: 70, cy: 770, cw: 300, ch: 70, color: "#e5a485" },
+            
+            1: { id: 1, name: "Ikea 2x4 Kallax White 1", type: "kallax", w: 2, h: 4, cx: 70, cy: 1120, cw: 140, ch: 70, color: "#fcd571" },
+            2: { id: 2, name: "Ikea 2x4 Kallax White 2", type: "kallax", w: 2, h: 4, cx: 230, cy: 1120, cw: 140, ch: 70, color: "#fcd571" },
+            
+            3: { id: 3, name: "Ikea 4x4 Kallax Black 1", type: "kallax", w: 4, h: 4, cx: 520, cy: 980, cw: 200, ch: 70, color: "#fcd571" },
+            4: { id: 4, name: "Ikea 4x4 Kallax White", type: "kallax", w: 4, h: 4, cx: 730, cy: 980, cw: 200, ch: 70, color: "#fcd571" },
+            
+            6: { id: 6, name: "Ikea 4x2 Kallax White", type: "kallax", w: 4, h: 2, cx: 520, cy: 1340, cw: 200, ch: 70, color: "#fcd571" },
+            5: { id: 5, name: "Ikea 3x4 Kallax White", type: "kallax", w: 3, h: 4, cx: 730, cy: 1340, cw: 200, ch: 70, color: "#fcd571" }
+        };
+
+        // --- 3. Google Sheet 讀取邏輯 ---
+        async function fetchSheetData() {
+            try {
+                const response = await fetch(sheetUrl);
+                const text = await response.text();
+                const jsonStr = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/)[1];
+                const data = JSON.parse(jsonStr);
+                
+                processData(data.table.rows);
+                
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = '✅ 資料讀取成功！點擊下方圖示櫃子開始查詢。';
+                statusEl.className = 'status success';
+
+                // 資料讀取後重繪一次 Canvas (如果需要顯示庫存狀態在圖上的話)
+                drawCanvas();
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = '❌ 讀取失敗！請確保 Google Sheet 權限為<strong>「知道連結的人均可查看」</strong>。';
+                statusEl.className = 'status error';
+            }
+        }
+
+        function processData(rows) {
+            inventoryData = {};
+            rows.forEach(row => {
+                if (!row || !row.c || !row.c[0] || row.c[0].v === null) return;
+                
+                const cabId = row.c[0].v.toString().trim();
+                const location = row.c[2] && row.c[2].v ? row.c[2].v.toString().replace(/\s+/g, '') : "未指定";
+                const category = row.c[3] && row.c[3].v ? row.c[3].v.toString() : "無分類";
+                const item = row.c[4] && row.c[4].v ? row.c[4].v.toString() : "未命名物品";
+
+                if (!inventoryData[cabId]) inventoryData[cabId] = {};
+                if (!inventoryData[cabId][location]) inventoryData[cabId][location] = [];
+                
+                inventoryData[cabId][location].push({ category, item });
+            });
+        }
+
+        // --- 4. Canvas 繪製邏輯 ---
+
+        // 繪製圓角矩形的輔助函數
+        function drawRoundRect(ctx, x, y, w, h, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + w - radius, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+            ctx.lineTo(x + w, y + h - radius);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+            ctx.lineTo(x + radius, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function drawCanvas() {
+            // 清空畫布
+            ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+            // 1. 畫背景色
+            ctx.fillStyle = '#f1ebd8';
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            // 2. 畫牆壁 (黑色粗線)
+            const wallThick = 16;
+            ctx.lineWidth = wallThick;
+            ctx.strokeStyle = '#000000';
+            ctx.lineCap = 'square';
+            ctx.lineJoin = 'miter';
+
+            ctx.beginPath();
+            // 從左下門口圓弧的頂點開始
+            ctx.moveTo(0, CANVAS_H - 250); 
+            ctx.lineTo(0, 0);             // 左牆 (向上)
+            ctx.lineTo(CANVAS_W, 0);      // 頂牆 (向右)
+            ctx.lineTo(CANVAS_W, CANVAS_H); // 右牆 (向下)
+            ctx.lineTo(250, CANVAS_H);    // 底牆 (向左，到門口)
+            ctx.stroke();
+
+            // 3. 畫門口圓弧
+            ctx.beginPath();
+            // arc(圓心x, 圓心y, 半徑, 起始角, 結束角)
+            // 圓心在左下角 (0, 1500)，半徑 250
+            ctx.arc(0, CANVAS_H, 250, 1.5 * Math.PI, 0); 
+            ctx.stroke();
+
+            // 4. 繪製所有櫃子
+            for (let key in cabinetsConfig) {
+                const cab = cabinetsConfig[key];
+                const isHovered = (hoveredCabId == cab.id);
+                const isSearchHighlighted = searchHighlightedCabIds.includes(cab.id.toString());
+
+                // 設定陰影 (懸停或搜尋命中時)
+                if (isSearchHighlighted) {
+                    ctx.shadowColor = 'rgba(217, 83, 79, 0.8)'; // 紅色發光效果
+                    ctx.shadowBlur = 20;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = '#d9534f'; // 紅色邊框
+                } else {
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = isHovered ? 15 : 8;
+                    ctx.shadowOffsetX = isHovered ? 4 : 2;
+                    ctx.shadowOffsetY = isHovered ? 4 : 2;
+                }
+
+                // 畫櫃子主體 (圓角)
+                drawRoundRect(ctx, cab.cx, cab.cy, cab.cw, cab.ch, 10);
+                
+                // 懸停時顏色稍微變亮
+                ctx.fillStyle = isHovered ? lightenColor(cab.color, 15) : cab.color;
+                ctx.fill();
+
+                if (isSearchHighlighted) {
+                    ctx.stroke(); // 如果被搜尋到，畫出紅色粗邊框
+                }
+
+                // 關閉陰影以免影響文字
+                ctx.shadowColor = 'transparent';
+
+                // 畫文字
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 28px "Microsoft JhengHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(cab.id, cab.cx + cab.cw / 2, cab.cy + cab.ch / 2 + 2);
+            }
+        }
+
+        // 顏色變亮輔助函數 (Hex)
+        function lightenColor(color, percent) {
+            let num = parseInt(color.replace("#",""),16),
+            amt = Math.round(2.55 * percent),
+            R = (num >> 16) + amt,
+            B = (num >> 8 & 0x00FF) + amt,
+            G = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 + (B<255?B<1?0:B:255)*0x100 + (G<255?G<1?0:G:255)).toString(16).slice(1);
+        }
+
+        // --- 5. Canvas 互動事件 ---
+
+        // 取得滑鼠在 Canvas 內的實際坐標 (處理縮放比例)
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;    
+            const scaleY = canvas.height / rect.height;  
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        // 檢查滑鼠是否在某個櫃子範圍內
+        function checkIntersection(mousePos) {
+            for (let key in cabinetsConfig) {
+                const cab = cabinetsConfig[key];
+                if (mousePos.x >= cab.cx && mousePos.x <= cab.cx + cab.cw &&
+                    mousePos.y >= cab.cy && mousePos.y <= cab.cy + cab.ch) {
+                    return cab.id;
+                }
+            }
+            return null;
+        }
+
+        canvas.addEventListener('mousemove', function(evt) {
+            const mousePos = getMousePos(evt);
+            const foundId = checkIntersection(mousePos);
+
+            if (foundId !== hoveredCabId) {
+                hoveredCabId = foundId;
+                // 改變鼠標樣式
+                canvas.style.cursor = hoveredCabId ? 'pointer' : 'default';
+                // 觸發重繪
+                requestAnimationFrame(drawCanvas);
+            }
+        });
+
+        canvas.addEventListener('click', function(evt) {
+            const mousePos = getMousePos(evt);
+            const clickedId = checkIntersection(mousePos);
+            
+            if (clickedId) {
+                openCabinet(clickedId);
+            }
+        });
+
+        // --- 6. 彈出視窗與網格生成 ---
+
+        function openCabinet(id) {
+            const config = cabinetsConfig[id];
+            if (!config) return;
+            
+            currentOpenCabId = id;
+            document.getElementById('modal-title').textContent = `${id}號: ${config.name}`;
+            
+            const frontView = document.getElementById('front-view');
+            frontView.innerHTML = ''; 
+            
+            // 繪製「上方」區域
+            const topArea = document.createElement('div');
+            topArea.className = 'top-area';
+            topArea.textContent = '櫃子上方';
+            if(checkHasItem(id, '上方')) topArea.classList.add('has-item');
+            topArea.onclick = () => showItems('上方', '櫃子上方');
+            frontView.appendChild(topArea);
+
+            // 根據櫃子種類繪製正面格子
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'grid-container';
+            
+            if (config.type === 'kallax') {
+                gridContainer.style.gridTemplateColumns = `repeat(${config.w}, 1fr)`;
+                for (let r = 1; r <= config.h; r++) {
+                    for (let c = 1; c <= config.w; c++) {
+                        const locId = `${r},${c}`;
+                        createCell(id, gridContainer, locId, `${locId}`);
+                    }
+                }
+            } else if (config.type === 'rack') {
+                gridContainer.style.gridTemplateColumns = `1fr`;
+                config.levels.forEach(level => {
+                    createCell(id, gridContainer, level, level);
+                });
+            }
+            
+            frontView.appendChild(gridContainer);
+            
+            // 重置下方文字區
+            document.getElementById('selected-loc-title').textContent = '請點擊上方格子查看物品';
+            document.getElementById('item-list-container').innerHTML = '';
+            
+            // 顯示 Modal
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function createCell(cabId, container, locId, displayText) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.textContent = displayText;
+            
+            if (checkHasItem(cabId, locId)) {
+                cell.classList.add('has-item');
+            }
+            
+            cell.onclick = () => showItems(locId, `位置: ${displayText}`);
+            container.appendChild(cell);
+        }
+
+        function checkHasItem(cabId, locId) {
+            if (!inventoryData[cabId]) return false;
+            return inventoryData[cabId][locId] && inventoryData[cabId][locId].length > 0;
+        }
+
+        function showItems(locId, displayTitle) {
+            document.getElementById('selected-loc-title').textContent = displayTitle;
+            const listContainer = document.getElementById('item-list-container');
+            listContainer.innerHTML = '';
+
+            if (inventoryData[currentOpenCabId] && inventoryData[currentOpenCabId][locId]) {
+                const items = inventoryData[currentOpenCabId][locId];
+                items.forEach(data => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="item-category">${data.category}</span> ${data.item}`;
+                    listContainer.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.style.color = '#888';
+                li.textContent = '此位置目前沒有登記物品。';
+                listContainer.appendChild(li);
+            }
+        }
+
+        function closeModal(event) {
+            if (event === true || event.target.id === 'modal') {
+                document.getElementById('modal').style.display = 'none';
+                currentOpenCabId = null;
+            }
+        }
+
+        // --- 7. 搜尋功能 ---
+        function handleSearchEnter(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '';
+            searchHighlightedCabIds = []; // 清空先前的高亮
+
+            if (!keyword) {
+                resultsContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 20px 0;">請輸入關鍵字開始搜尋</div>';
+                drawCanvas(); // 重繪以清除高亮
+                return;
+            }
+
+            let matchCount = 0;
+
+            // 遍歷所有庫存資料比對關鍵字 (支援物品名稱或分類)
+            for (let cabId in inventoryData) {
+                let cabMatches = [];
+                for (let loc in inventoryData[cabId]) {
+                    const items = inventoryData[cabId][loc];
+                    items.forEach(itemData => {
+                        if (itemData.item.toLowerCase().includes(keyword) || 
+                            itemData.category.toLowerCase().includes(keyword)) {
+                            cabMatches.push({
+                                loc: loc,
+                                item: itemData.item,
+                                category: itemData.category
+                            });
+                        }
+                    });
+                }
+
+                // 如果該櫃子有符合的物品，產生結果項目並記錄高亮
+                if (cabMatches.length > 0) {
+                    searchHighlightedCabIds.push(cabId.toString());
+                    const cabConfig = cabinetsConfig[cabId] || { name: "未知櫃子" };
+                    
+                    cabMatches.forEach(match => {
+                        matchCount++;
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        div.onclick = () => openCabinet(cabId); // 點擊直達該櫃子
+                        
+                        div.innerHTML = `
+                            <div class="result-loc">📍 ${cabId}號櫃 (${cabConfig.name}) - 位置: ${match.loc}</div>
+                            <div class="result-name"><span class="item-category">${match.category}</span> ${match.item}</div>
+                        `;
+                        resultsContainer.appendChild(div);
+                    });
+                }
+            }
+
+            // 顯示結果總結
+            if (matchCount === 0) {
+                resultsContainer.innerHTML = '<div style="padding: 15px; color: #d9534f; text-align: center;">找不到相符的物品。</div>';
+            } else {
+                const countDiv = document.createElement('div');
+                countDiv.style.padding = '10px 5px';
+                countDiv.style.fontWeight = 'bold';
+                countDiv.style.color = '#333';
+                countDiv.style.borderBottom = '2px solid #eee';
+                countDiv.style.marginBottom = '10px';
+                countDiv.textContent = `找到 ${matchCount} 項結果：(點擊開啟櫃子)`;
+                resultsContainer.insertBefore(countDiv, resultsContainer.firstChild);
+            }
+
+            drawCanvas(); // 重繪地圖以顯示搜尋結果的紅色高光
+        }
+
+        // 初始化
+        window.onload = () => {
+            drawCanvas();      // 先畫出基本地圖
+            fetchSheetData();  // 去抓 Google Sheet
+        };
+    </script>
+</body>
+</html>
