@@ -194,6 +194,7 @@
 </head>
 <body>
 
+    <!-- 手機版頂部選單 -->
     <div class="mobile-top-bar">
         <div class="logo-box">
             <img src="logo.png" alt="logo">
@@ -202,8 +203,10 @@
         <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
     </div>
 
+    <!-- 遮罩 (手機版專用) -->
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
+    <!-- 選單區塊 -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
             <div class="sidebar-header">
@@ -214,31 +217,44 @@
                 <button class="toggle-btn desktop-only" onclick="toggleSidebar()">◀</button>
             </div>
 
+            <!-- 分類 1 -->
             <div class="category-title">Tutor & Course Management</div>
             <a href="pi timetable.html" target="viewer">Pi Timetable</a>
             <a href="tutor dashboard.html" target="viewer">Tutor Dashboard</a>
             <a href="tutor reminder.html" target="viewer">Tutor Reminder</a>
-            <a href="feedback.html" target="viewer">Course Feedback</a>
+            
+            <!-- 更新為 GAS 網址 -->
+            <a href="https://script.google.com/macros/s/AKfycbxLfS1sDxVZT3lDxqrdhAv3QZfY_WFbCvsQtvo8ct2tvM-GnBmsfYdUxEpWWWwxV_GUlQ/exec" target="viewer">Course Feedback</a>
+            <!-- 新增監控版 -->
+            <a href="https://script.google.com/macros/s/AKfycbxLfS1sDxVZT3lDxqrdhAv3QZfY_WFbCvsQtvo8ct2tvM-GnBmsfYdUxEpWWWwxV_GUlQ/exec?page=review" target="viewer">Course Feedback 監控版</a>
+            
             <a href="https://docs.google.com/spreadsheets/d/1Pvf0uVyTXVtyRDH0nZeExi_xhbpieq_DYvnNJBwmYGQ/edit?gid=0#gid=0" target="viewer">課程總匯.GS</a>
             <a href="https://docs.google.com/spreadsheets/d/1YAkK2qInSwqIpscbrNBgZzSAlRp0u34BexcYIuEFdIY/edit?gid=0#gid=0" target="viewer">教材總匯.GS</a>
 
+            <!-- 分類 2 -->
             <div class="category-title">Accounting</div>
             <a href="red 4.0.html" target="viewer">Red 4.0</a>
             <a href="red simpified.html" target="viewer">Red Simplified</a>
             <a href="Costcount.html" target="viewer">報價成本計算器</a>
             <a href="Stock.html" target="viewer">電子倉庫</a>
 
+            <!-- 分類 3 -->
             <div class="category-title">Leadership</div>
-            <a href="mission board.html" target="viewer">Mission Board</a>
+            <!-- 更新為 GAS 網址 -->
+            <a href="https://script.google.com/macros/s/AKfycbzVDGzQ6PeamgrRDtLeWi5wRY2Jnc_HKCWhfTGEXWhNg2al2W02yKvbX3hCbPBA9JgbDQ/exec" target="viewer">Mission Board</a>
+            
             <a href="mission dashboard.html" target="viewer">Mission Dashboard</a>
             <a href="mission delivery.html" target="viewer">Mission Delivery</a>
             <a href="one on one meeting form.html" target="viewer">1-on-1 Meeting Form</a>
-            <a href="https://docs.google.com/spreadsheets/d/1ZHh0QJAFQ3hpmnM_FtN3YLvwV1_Qj7O6Uuv2kiy1m_Y/edit?gid=0#gid=0" target="viewer">Misson.GS</a>
+            
+            <!-- 已將 Mission.GS 移除 -->
+            
             <a href="tomato.html" target="viewer">蕃茄鐘</a>
             <a href="https://docs.google.com/spreadsheets/d/1-UGdCaF5PPaBXG00vZOAqn8zjUnjvK7ZiAEudXLy37I/edit?hl=zh-tw&gid=0#gid=0" target="viewer">蕃茄鐘Record.GS</a>
         </div>
     </div>
 
+    <!-- 主內容區 -->
     <div class="main-content">
         <button class="floating-open-btn" id="openBtn" onclick="toggleSidebar()">☰ 選單</button>
         <iframe src="pi timetable.html" name="viewer" class="content-frame"></iframe>
